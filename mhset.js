@@ -25,6 +25,14 @@ mhset.initialize = function() {
 	this.Talisman.Skill2 = "Handicraft";
 	this.Talisman.Skill1Points = 2;
 	this.Talisman.Skill2Points = 1;
+
+	this.ExclusionLists = {};
+	this.ExclusionLists.Head = {};
+	this.ExclusionLists.Body = {};
+	this.ExclusionLists.Arms = {};
+	this.ExclusionLists.Waist = {};
+	this.ExclusionLists.Legs = {};
+	this.ExclusionLists.Jewel = {};
 //	this.test();
 	console.log("COMPLETE: mhset.initialize();");	
 }
@@ -94,26 +102,6 @@ mhset.createSkillArmorIndexes = function() {
 	console.log("COMPLETE: mhset.createSkillArmorIndex();");	
 }
 
-
-mhset.assignArmorDataToSkillArmorIndex = function(idxSkillArmor, piece) {
-	/* Get part, hunter type, and skill points */
-}
-
-mhset.clearWorkingData = function() {
-	console.log("CALL: mhset.clearWorkingData();");
-	this.workingSet = {};
-	this.workingSet.targetSkills = {};
-	this.workingSet.candidates = {};
-	this.workingSet.candidates.Head = {};
-	this.workingSet.candidates.Body = {};
-	this.workingSet.candidates.Arms = {};
-	this.workingSet.candidates.Waist = {};
-	this.workingSet.candidates.Legs = {};
-	this.workingSet.candidates.Jewel = {};
-	this.workingSet.combinations = [];
-	console.log("COMPLETE: mhset.clearWorkingData();");
-}
-
 mhset.initializeRarityLimits = function() {
 	console.log("CALL: mhset.initializeRarityLimits();");
 	this.rarityLimits = {};
@@ -122,17 +110,59 @@ mhset.initializeRarityLimits = function() {
 	this.rarityLimits.Arms = {min: 3, max: 4};
 	this.rarityLimits.Waist = {min: 3, max: 4};
 	this.rarityLimits.Legs = {min: 3, max: 4};
-	this.rarityLimits.Jewel = {min: 3, max: 4};
+	this.rarityLimits.Jewel = {min: 1, max: 10};
 	console.log("COMPLETE: mhset.initializeRarityLimits();");
 }
+
+mhset.assignArmorDataToSkillArmorIndex = function(idxSkillArmor, piece) {
+	/* Get part, hunter type, and skill points */
+}
+
+
+
+
+/*
+____    __    ____  ______   .______       __  ___  __  .__   __.   _______ 
+\   \  /  \  /   / /  __  \  |   _  \     |  |/  / |  | |  \ |  |  /  _____|
+ \   \/    \/   / |  |  |  | |  |_)  |    |  '  /  |  | |   \|  | |  |  __  
+  \            /  |  |  |  | |      /     |    <   |  | |  . `  | |  | |_ | 
+   \    /\    /   |  `--'  | |  |\  \----.|  .  \  |  | |  |\   | |  |__| | 
+    \__/  \__/     \______/  | _| `._____||__|\__\ |__| |__| \__|  \______| 
+                                                                            
+     _______. _______ .___________.    _______.                             
+    /       ||   ____||           |   /       |                             
+   |   (----`|  |__   `---|  |----`  |   (----`                             
+    \   \    |   __|      |  |        \   \                                 
+.----)   |   |  |____     |  |    .----)   |                                
+|_______/    |_______|    |__|    |_______/                                 
+                                                                            
+*/
+
+mhset.clearWorkingData = function() {
+	console.log("CALL: mhset.clearWorkingData();");
+	this.workingSet = {};
+	this.workingSet.targetUnlockSkills = {};
+	this.workingSet.candidates = {};
+	this.workingSet.candidates.Head = {};
+	this.workingSet.candidates.Body = {};
+	this.workingSet.candidates.Arms = {};
+	this.workingSet.candidates.Waist = {};
+	this.workingSet.candidates.Legs = {};
+	this.workingSet.candidates.Jewel = {};
+	this.workingSet.combinations = [];
+	this.workingSet.bestJewels = {};
+	console.log("COMPLETE: mhset.clearWorkingData();");
+}
+
+
 
 mhset.setWorkingValidSkill = function(aUnlockSkill) {
 	console.log("CALL: mhset.setWorkingValidSkill('" + aUnlockSkill + "');");
 
 	if (this.SkillList[aUnlockSkill]) {
-		this.workingSet.targetSkills[aUnlockSkill] = {};
-		this.workingSet.targetSkills[aUnlockSkill].SkillName = this.SkillList[aUnlockSkill].SkillName;
-		this.workingSet.targetSkills[aUnlockSkill].PointReq = this.SkillList[aUnlockSkill].PointReq;
+		this.workingSet.targetUnlockSkills[aUnlockSkill] = {};
+		this.workingSet.targetUnlockSkills[aUnlockSkill].SkillName = this.SkillList[aUnlockSkill].SkillName;
+		this.workingSet.targetUnlockSkills[aUnlockSkill].PointReq = this.SkillList[aUnlockSkill].PointReq;
 	} else {
 		console.log("WARN: mhset.setWorkingValidSkill('" + aUnlockSkill + "'); Skill Not Found");
 	}
@@ -141,13 +171,15 @@ mhset.setWorkingValidSkill = function(aUnlockSkill) {
 
 mhset.getArmorPiecesByTargetSkills = function(aHunterType) {
 	console.log("CALL: mhset.getArmorPiecesByTargetSkills();");
-	this.workingSet.canditates = {};
+	this.workingSet.candidates = {};
 	this.setArmorCandidates(aHunterType, "Head");
 	this.setArmorCandidates(aHunterType, "Body");
 	this.setArmorCandidates(aHunterType, "Arms");
 	this.setArmorCandidates(aHunterType, "Waist");
 	this.setArmorCandidates(aHunterType, "Legs");
 	this.setArmorCandidates(aHunterType, "Jewel");
+	this.getJewelDetails(this.workingSet.candidates.Jewel);
+	this.getSkillJewelIndex(this.workingSet.candidates.Jewel);
 	console.log("COMPLETE: mhset.getArmorPiecesByTargetSkills();");
 }
 
@@ -155,8 +187,8 @@ mhset.getArmorPiecesByTargetSkills = function(aHunterType) {
 mhset.setArmorCandidates = function(aHunterType, aBodyPart) {
 	console.log("CALL: mhset.setArmorCandidates(" + aHunterType + ", " + aBodyPart + ");");
 
-	var targSkSc =	this.workingSet.targetSkills;
-	var candSc =	this.workingSet.candidates[aBodyPart];
+	var targSkSc =	this.workingSet.targetUnlockSkills;
+	var candSc =	this.workingSet.candidates[aBodyPart] = {};
 
 	// Look at each skill target skill and loop through them.
 	for (var sk in targSkSc) {
@@ -192,6 +224,7 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 		var saiSc = this.SkillArmorIndex[aSkillName][ap];
 		if (	
 				saiSc.Part == aBodyPart 
+				&& !this.ExclusionLists[aBodyPart][ap]
 				&& saiSc.SkillPoints > 0
 				&& saiSc.Rarity >= this.rarityLimits[aBodyPart].min && saiSc.Rarity <= this.rarityLimits[aBodyPart].max 
 				&& (saiSc.HunterType == "Both" || saiSc.HunterType == aHunterType)
@@ -210,6 +243,104 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 
 }
 
+mhset.getJewelDetails = function(aJewelCands) {
+	for (var j in aJewelCands) {
+		if (this.Jewels[j]) {
+			aJewelCands[j].Slots = this.Jewels[j].Slots;
+			aJewelCands[j].SlotCount = this.Jewels[j].SlotCount;
+			aJewelCands[j].Skills = {};
+			if (this.ArmorSkillIndex[j]) {
+				for (var sk in this.ArmorSkillIndex[j]) {
+					aJewelCands[j].Skills[sk] = this.ArmorSkillIndex[j][sk].SkillPoints;
+				}
+			}
+		}
+	}
+}
+
+mhset.getSkillJewelIndex = function(aJewelCands) {
+	this.workingSet.SkillJewelIndex = {};
+	for (var tus in this.workingSet.targetUnlockSkills) {
+		if (!this.workingSet.SkillJewelIndex[this.workingSet.targetUnlockSkills[tus].SkillName]) {
+			this.workingSet.SkillJewelIndex[this.workingSet.targetUnlockSkills[tus].SkillName] = {};
+		}
+		var skjSc = this.workingSet.SkillJewelIndex[this.workingSet.targetUnlockSkills[tus].SkillName];
+	}
+
+	for (var sk in this.workingSet.SkillJewelIndex) {
+//		if (jcand )
+		for (var j in this.workingSet.candidates.Jewel) {
+			var cjSc = this.workingSet.candidates.Jewel[j];
+			if (cjSc.Skills[sk]) {
+				this.workingSet.SkillJewelIndex[sk][j] = {};
+				this.workingSet.SkillJewelIndex[sk][j].SkillPoints = cjSc.Skills[sk];
+				this.workingSet.SkillJewelIndex[sk][j].SlotCount = cjSc.SlotCount;
+			}
+		}
+		this.getBestJewelBySlotReq(sk, this.workingSet.SkillJewelIndex[sk]);
+	}
+
+}
+
+mhset.getBestJewelBySlotReq = function(skillName, jewelList) {
+	this.workingSet.bestJewels[skillName] = {};
+	this.workingSet.bestJewels[skillName].singleSlot = {"Jewel": null, "SkillPoints":0};
+	this.workingSet.bestJewels[skillName].doubleSlot = {"Jewel": null, "SkillPoints":0};
+	this.workingSet.bestJewels[skillName].tripleSlot = {"Jewel": null, "SkillPoints":0};
+
+	for (var j in jewelList) {
+		var slotIndex= null;
+		switch(jewelList[j].SlotCount) {
+			case 1:
+				slotIndex = "singleSlot";
+				break;
+			case 2:
+				slotIndex = "doubleSlot";
+				break;
+			case 3:
+				slotIndex = "tripleSlot";
+				break;
+			default:
+				slotIndex = null;
+		}
+		if (slotIndex 
+			&& this.workingSet.bestJewels[skillName][slotIndex].SkillPoints < jewelList[j].SkillPoints) {
+			this.workingSet.bestJewels[skillName][slotIndex].SkillPoints =jewelList[j].SkillPoints;
+			this.workingSet.bestJewels[skillName][slotIndex].Jewel = j;
+		}
+	}
+
+}
+
+
+
+
+
+/*
+http://patorjk.com/software/taag/#p=display&f=Star%20Wars&t=Experimental%0ASets
+ __________   ___ .______    _______ .______       __  .___  ___.  _______ .__   __. .___________.    ___       __      
+|   ____\  \ /  / |   _  \  |   ____||   _  \     |  | |   \/   | |   ____||  \ |  | |           |   /   \     |  |     
+|  |__   \  V  /  |  |_)  | |  |__   |  |_)  |    |  | |  \  /  | |  |__   |   \|  | `---|  |----`  /  ^  \    |  |     
+|   __|   >   <   |   ___/  |   __|  |      /     |  | |  |\/|  | |   __|  |  . `  |     |  |      /  /_\  \   |  |     
+|  |____ /  .  \  |  |      |  |____ |  |\  \----.|  | |  |  |  | |  |____ |  |\   |     |  |     /  _____  \  |  `----.
+|_______/__/ \__\ | _|      |_______|| _| `._____||__| |__|  |__| |_______||__| \__|     |__|    /__/     \__\ |_______|
+                                                                                                                        
+     _______. _______ .___________.    _______.                                                                         
+    /       ||   ____||           |   /       |                                                                         
+   |   (----`|  |__   `---|  |----`  |   (----`                                                                         
+    \   \    |   __|      |  |        \   \                                                                             
+.----)   |   |  |____     |  |    .----)   |                                                                            
+|_______/    |_______|    |__|    |_______/                                                                             
+                                                                                                                        
+*/
+
+
+
+
+
+
+
+
 mhset.createExperimentalSets = function() {
 	var cand = this.workingSet.candidates;
 	var i = 0;
@@ -225,9 +356,12 @@ mhset.createExperimentalSets = function() {
 						setObj.Arms = ca;
 						setObj.Waist = cw;
 						setObj.Legs = cl;
-
+						setObj.ViabilityRank = 0;
 						this.calculateInitialViability(setObj);
-						setArray[i++] = setObj;
+
+						if (i < 100) {
+							setArray[i++] = setObj;
+						}
 					}
 				}
 			}
@@ -246,15 +380,16 @@ mhset.calculateInitialViability = function(armorSet) {
 	armorSet.slot3s = 0;
 	armorSet.slotTotal = 0;
 	armorSet.TorsoUps = 0;
+	armorSet.TorsoSlots = 0;
 	armorSet.targetSkills = {};
-	armorSet.allSkills = {};
+	armorSet.JemSets = [];
 
 	this.calculateArmorSlots(armorSet);
 	this.countTorsoUps(armorSet);
 
-	for (var targSkill in this.workingSet.targetSkills) {
-		var skillName = this.workingSet.targetSkills[targSkill].SkillName;
-		var pointReq = this.workingSet.targetSkills[targSkill].PointReq;
+	for (var targSkill in this.workingSet.targetUnlockSkills) {
+		var skillName = this.workingSet.targetUnlockSkills[targSkill].SkillName;
+		var pointReq = this.workingSet.targetUnlockSkills[targSkill].PointReq;
 		armorSet.targetSkills[skillName] = {};
 		armorSet.targetSkills[skillName].SkillName = skillName;
 		armorSet.targetSkills[skillName].PointReq = pointReq;
@@ -265,6 +400,8 @@ mhset.calculateInitialViability = function(armorSet) {
 	}
 
 	this.calculateRawTargetSkills(armorSet);
+	this.determineViableGemCombinations(armorSet);
+
 	this.assignViabiltyRank(armorSet);
 
 }
@@ -282,6 +419,7 @@ mhset.calculateArmorSlots = function(armorSet) {
 		}
 		if (bodySlots >= 1 && bodySlots <= 3) {
 			armorSet["slot" + bodySlots + "s"]++;
+			armorSet.TorsoSlots = bodySlots;
 		}
 		if (armsSlots >= 1 && armsSlots <= 3) {
 			armorSet["slot" + armsSlots + "s"]++;
@@ -313,9 +451,9 @@ mhset.getSlotCountForPiece = function(aArmorPiece) {
 
 
 mhset.countTorsoUps = function(armorSet) {
-	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Head);
-	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Arms);
-	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Waist);
+	armorSet.TorsoUps += mhset.checkForTorsoUp(armorSet.Head);
+	armorSet.TorsoUps += mhset.checkForTorsoUp(armorSet.Arms);
+	armorSet.TorsoUps += mhset.checkForTorsoUp(armorSet.Waist);
 	armorSet.TorsoUps += mhset.checkForTorsoUp(armorSet.Legs);
 }
 
@@ -360,9 +498,48 @@ mhset.getSkillPointsByArmorPiece = function(aArmorPiece, aSkillName) {
 	}
 }
 
+
+
+mhset.determineViableGemCombinations = function(armorSet) {
+	/*
+	- look at each skill deficit in targetSkills
+	- If any single skill on the list can't work even if every gem is used for that skill, reject the whole set.
+	*/
+	for (var targSk in armorSet.targetSkills) {
+		if (armorSet.ViabilityRank >= 0) {
+			this.checkAllInGemViability(armorSet, armorSet.targetSkills[targSk].SkillName);
+		}
+	}
+}
+
+mhset.checkAllInGemViability = function(armorSet, skillName) {
+	/* 
+	Check against any torso slots with torso up as options
+	Fill other slots
+	*/
+
+
+	var targJewelPoints = armorSet.targetSkills[skillName].JewelPointsRequired;
+	var jewelPointsTot = 0;
+	var jewelOpts = this.workingSet.SkillJewelIndex[skillName];
+	if (jewelOpts) {
+		// Check torso slot first and account for torso ups
+		jewelPointsTot = this.applyTorsoSlotsSimple(armorSet,jewelOpts);
+	}
+}
+
+mhset.applyTorsoSlotsSimple = function(armorSet, jewelOpts) {
+
+}
+
 mhset.assignViabiltyRank = function(armorSet) {
 
 }
+
+
+
+
+
 
 
 
@@ -400,6 +577,9 @@ mhset.spitOutTable = function(obj) {
 
 
 mhset.test = function() {
+	mhset.ExclusionLists.Body["Gore Mail"] = 1;
+	mhset.ExclusionLists.Jewel["Artisan Jewel 3"] = 1;
+
 	mhset.setWorkingValidSkill("Challenger +2");
 	mhset.setWorkingValidSkill("Evasion +1");
 	mhset.setWorkingValidSkill("Sharpness +1");
