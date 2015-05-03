@@ -18,6 +18,14 @@ mhset.initialize = function() {
 	this.initializeRarityLimits();
 	this.UserHunterType = "Blademaster";
 	this.UserGender = "Male";
+	this.WeaponSlots = 1;
+	this.Talisman = {};
+	this.Talisman.Slots = 1;
+	this.Talisman.Skill1 = "Evasion";
+	this.Talisman.Skill2 = "Handicraft";
+	this.Talisman.Skill1Points = 2;
+	this.Talisman.Skill2Points = 1;
+//	this.test();
 	console.log("COMPLETE: mhset.initialize();");	
 }
 
@@ -109,12 +117,12 @@ mhset.clearWorkingData = function() {
 mhset.initializeRarityLimits = function() {
 	console.log("CALL: mhset.initializeRarityLimits();");
 	this.rarityLimits = {};
-	this.rarityLimits.Head = {min: 1, max: 6};
-	this.rarityLimits.Body = {min: 1, max: 6};
-	this.rarityLimits.Arms = {min: 1, max: 6};
-	this.rarityLimits.Waist = {min: 1, max: 6};
-	this.rarityLimits.Legs = {min: 1, max: 6};
-	this.rarityLimits.Jewel = {min: 1, max: 6};
+	this.rarityLimits.Head = {min: 3, max: 4};
+	this.rarityLimits.Body = {min: 3, max: 4};
+	this.rarityLimits.Arms = {min: 3, max: 4};
+	this.rarityLimits.Waist = {min: 3, max: 4};
+	this.rarityLimits.Legs = {min: 3, max: 4};
+	this.rarityLimits.Jewel = {min: 3, max: 4};
 	console.log("COMPLETE: mhset.initializeRarityLimits();");
 }
 
@@ -164,6 +172,7 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 	/*
 	Any piece with Torso up is alawys candidate and will be included
 	*/	
+	/* // Removed 5/2/2015
 	for (var ap in this.SkillArmorIndex["Torso Up"]) {
 		var saiSc = this.SkillArmorIndex["Torso Up"][ap];
 		if (	
@@ -173,6 +182,10 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 			) {
 			candidateRepos[ap] = {};
 		}
+	}
+	*/
+	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
+		candidateRepos["_" + aHunterType + "TorsoUp" + aBodyPart] = {};
 	}
 
 	for (var ap in this.SkillArmorIndex[aSkillName]) {
@@ -189,11 +202,12 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 
 	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
 	if (aBodyPart !== 'Jewel') {
-		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
+//		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
 		candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
 		candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
 		candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
 	}
+
 }
 
 mhset.createExperimentalSets = function() {
@@ -214,13 +228,12 @@ mhset.createExperimentalSets = function() {
 
 						this.calculateInitialViability(setObj);
 						setArray[i++] = setObj;
-
-						if (i > 1000) {
-							break;
-						}
 					}
 				}
 			}
+		}
+		if (i > 1) {
+			break;
 		}
 	}
 	this.workingSet.combinations = setArray;
@@ -228,32 +241,128 @@ mhset.createExperimentalSets = function() {
 
 
 mhset.calculateInitialViability = function(armorSet) {
-	var slot1s;
-	var slot2s;
-	var slot3s;
-	var slotTotal;
+	armorSet.slot1s = 0;
+ 	armorSet.slot2s = 0;
+	armorSet.slot3s = 0;
+	armorSet.slotTotal = 0;
+	armorSet.TorsoUps = 0;
 	armorSet.targetSkills = {};
+	armorSet.allSkills = {};
+
+	this.calculateArmorSlots(armorSet);
+	this.countTorsoUps(armorSet);
+
 	for (var targSkill in this.workingSet.targetSkills) {
-		armorSet.targetSkills[this.workingSet.targetSkills[targSkill].SkillName] = {};
+		var skillName = this.workingSet.targetSkills[targSkill].SkillName;
+		var pointReq = this.workingSet.targetSkills[targSkill].PointReq;
+		armorSet.targetSkills[skillName] = {};
+		armorSet.targetSkills[skillName].SkillName = skillName;
+		armorSet.targetSkills[skillName].PointReq = pointReq;
+		armorSet.targetSkills[skillName].RawSkillPoints = 0;
+		armorSet.targetSkills[skillName].RawTorsoUpBonus = 0;
+		armorSet.targetSkills[skillName].JewelPointsRequired = 0;
+		armorSet.targetSkills[skillName].TalismanPoints = 0;
+	}
+
+	this.calculateRawTargetSkills(armorSet);
+	this.assignViabiltyRank(armorSet);
+
+}
+
+mhset.calculateArmorSlots = function(armorSet) {
+	if (armorSet) {
+		var headSlots = mhset.getSlotCountForPiece(armorSet.Head);
+		var bodySlots = mhset.getSlotCountForPiece(armorSet.Body);
+		var armsSlots = mhset.getSlotCountForPiece(armorSet.Arms);
+		var waistSlots = mhset.getSlotCountForPiece(armorSet.Waist);
+		var legsSlots = mhset.getSlotCountForPiece(armorSet.Legs);
+
+		if (headSlots >= 1 && headSlots <= 3) {
+			armorSet["slot" + headSlots + "s"]++;
+		}
+		if (bodySlots >= 1 && bodySlots <= 3) {
+			armorSet["slot" + bodySlots + "s"]++;
+		}
+		if (armsSlots >= 1 && armsSlots <= 3) {
+			armorSet["slot" + armsSlots + "s"]++;
+		}
+		if (waistSlots >= 1 && waistSlots <= 3) {
+			armorSet["slot" + waistSlots + "s"]++;
+		}
+		if (legsSlots >= 1 && legsSlots <= 3) {
+			armorSet["slot" + legsSlots + "s"]++;
+		}
+		if (this.WeaponSlots >= 1 && this.WeaponSlots) {
+			armorSet["slot" + this.WeaponSlots + "s"]++;
+		}
+		if (this.Talisman.Slots >= 1 && this.Talisman.Slots) {
+			armorSet["slot" + this.Talisman.Slots + "s"]++;
+		}
+		armorSet.slotTotal = headSlots + bodySlots + armsSlots + waistSlots + legsSlots + this.WeaponSlots + this.Talisman.Slots;
+	}
+}
+
+mhset.getSlotCountForPiece = function(aArmorPiece) {
+	if (aArmorPiece && this.ArmorPieces[aArmorPiece]) {
+		return this.ArmorPieces[aArmorPiece].SlotCount;
+	}
+	else {
+		return 0;
 	}
 }
 
 
-
-mhset.test = function() {
-	mhset.setWorkingValidSkill("Challenger +2");
-	mhset.setWorkingValidSkill("Evasion +1");
-	mhset.setWorkingValidSkill("Sharpness +1");
-	mhset.getArmorPiecesByTargetSkills("Blademaster");
-
-	mhset.createExperimentalSets();
-	//mhset.setArmorCandidates("Blademaster","Head");
-
-
+mhset.countTorsoUps = function(armorSet) {
+	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Head);
+	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Arms);
+	armorSet.TorsoUps +=  mhset.checkForTorsoUp(armorSet.Waist);
+	armorSet.TorsoUps += mhset.checkForTorsoUp(armorSet.Legs);
 }
 
+mhset.checkForTorsoUp = function(aArmorPiece) {
+	if (this.SkillArmorIndex["Torso Up"] && this.SkillArmorIndex["Torso Up"][aArmorPiece]) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
 
+mhset.calculateRawTargetSkills = function(armorSet) {
+	if (armorSet) {
+		for (var targSkill in armorSet.targetSkills) {
+			var asTsSc = armorSet.targetSkills[targSkill];
 
+			asTsSc.RawSkillPoints += this.getSkillPointsByArmorPiece(armorSet.Head, targSkill);
+			asTsSc.RawTorsoUpBonus = this.getSkillPointsByArmorPiece(armorSet.Body, targSkill) * armorSet.TorsoUps;
+			asTsSc.RawSkillPoints += this.getSkillPointsByArmorPiece(armorSet.Body, targSkill);
+			asTsSc.RawSkillPoints += this.getSkillPointsByArmorPiece(armorSet.Arms, targSkill);
+			asTsSc.RawSkillPoints += this.getSkillPointsByArmorPiece(armorSet.Waist, targSkill);
+			asTsSc.RawSkillPoints += this.getSkillPointsByArmorPiece(armorSet.Legs, targSkill);
+
+			if (this.Talisman.Skill1 === targSkill) {
+				asTsSc.TalismanPoints += this.Talisman.Skill1Points;
+			}
+			if (this.Talisman.Skill2 === targSkill) {
+				asTsSc.TalismanPoints += this.Talisman.Skill2Points;
+			}
+
+			asTsSc.JewelPointsRequired = asTsSc.PointReq - asTsSc.TalismanPoints - asTsSc.RawSkillPoints - asTsSc.RawTorsoUpBonus;
+		}
+	}
+}
+
+mhset.getSkillPointsByArmorPiece = function(aArmorPiece, aSkillName) {
+	if (mhset.ArmorSkillIndex[aArmorPiece] && mhset.ArmorSkillIndex[aArmorPiece][aSkillName] ) {
+		return mhset.ArmorSkillIndex[aArmorPiece][aSkillName].SkillPoints;
+	} else {
+		return 0;
+	}
+}
+
+mhset.assignViabiltyRank = function(armorSet) {
+
+}
 
 
 
@@ -283,4 +392,21 @@ mhset.spitOutTable = function(obj) {
 	else {
 		return document.createElement("div");
 	}
+}
+
+
+
+
+
+
+mhset.test = function() {
+	mhset.setWorkingValidSkill("Challenger +2");
+	mhset.setWorkingValidSkill("Evasion +1");
+	mhset.setWorkingValidSkill("Sharpness +1");
+	mhset.getArmorPiecesByTargetSkills("Blademaster");
+
+	mhset.createExperimentalSets();
+	//mhset.setArmorCandidates("Blademaster","Head");
+
+
 }

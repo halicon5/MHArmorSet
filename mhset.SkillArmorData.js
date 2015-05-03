@@ -12038,5 +12038,13 @@ mhset.SkillArmorData = [
 {"SkillName": "Evade Dist",  "SkillPoints": 2,  "ArmorPiece": "Lagombi Helm"},
 {"SkillName": "Evade Dist",  "SkillPoints": 2,  "ArmorPiece": "Lagombi Cap"},
 {"SkillName": "Evade Dist",  "SkillPoints": 3,  "ArmorPiece": "Nargacuga Helm"},
-{"SkillName": "Evade Dist",  "SkillPoints": 3,  "ArmorPiece": "Nargacuga Cap"}
+{"SkillName": "Evade Dist",  "SkillPoints": 3,  "ArmorPiece": "Nargacuga Cap"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_GunnerTorsoUpHead"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_GunnerTorsoUpArms"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_GunnerTorsoUpWaist"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_GunnerTorsoUpLegs"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_BlademasterTorsoUpHead"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_BlademasterTorsoUpArms"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_BlademasterTorsoUpWaist"},
+{"SkillName": "Torso Up", "SkillPoints": 1, "ArmorPiece": "_BlademasterTorsoUpLegs"}
 ];
