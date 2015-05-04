@@ -10,6 +10,7 @@ mhset.initialize = function() {
 	console.log("CALL: mhset.initialize();");
 
 	this.rawoutput = document.getElementById("rawoutput");
+	this.scanCount = document.getElementById("scanCount");
 	this.failures = [];
 //	this.failures[0] = "initialize";
 
@@ -33,7 +34,8 @@ mhset.initialize = function() {
 	this.ExclusionLists.Waist = {};
 	this.ExclusionLists.Legs = {};
 	this.ExclusionLists.Jewel = {};
-//	this.test();
+	this.test();
+//	alert('test');
 	console.log("COMPLETE: mhset.initialize();");	
 }
 
@@ -340,10 +342,10 @@ http://patorjk.com/software/taag/#p=display&f=Star%20Wars&t=Experimental%0ASets
 
 
 
-
 mhset.createExperimentalSets = function() {
 	var cand = this.workingSet.candidates;
 	var i = 0;
+	var j = 0;
 	var setArray = [];
 	for (var ch in cand.Head) {
 		for (var cb in cand.Body) {
@@ -357,17 +359,15 @@ mhset.createExperimentalSets = function() {
 						setObj.Waist = cw;
 						setObj.Legs = cl;
 						setObj.ViabilityRank = 0;
+//						window.setTimeout(mhset.calculateInitialViability, 1, setObj);
 						this.calculateInitialViability(setObj);
 
-						if (i < 100) {
+						if (setObj.ViabilityRank >= 0) {
 							setArray[i++] = setObj;
 						}
 					}
 				}
 			}
-		}
-		if (i > 1) {
-			break;
 		}
 	}
 	this.workingSet.combinations = setArray;
@@ -403,7 +403,6 @@ mhset.calculateInitialViability = function(armorSet) {
 	this.determineViableGemCombinations(armorSet);
 
 	this.assignViabiltyRank(armorSet);
-
 }
 
 mhset.calculateArmorSlots = function(armorSet) {
@@ -418,7 +417,7 @@ mhset.calculateArmorSlots = function(armorSet) {
 			armorSet["slot" + headSlots + "s"]++;
 		}
 		if (bodySlots >= 1 && bodySlots <= 3) {
-			armorSet["slot" + bodySlots + "s"]++;
+//			armorSet["slot" + bodySlots + "s"]++;
 			armorSet.TorsoSlots = bodySlots;
 		}
 		if (armsSlots >= 1 && armsSlots <= 3) {
@@ -436,7 +435,7 @@ mhset.calculateArmorSlots = function(armorSet) {
 		if (this.Talisman.Slots >= 1 && this.Talisman.Slots) {
 			armorSet["slot" + this.Talisman.Slots + "s"]++;
 		}
-		armorSet.slotTotal = headSlots + bodySlots + armsSlots + waistSlots + legsSlots + this.WeaponSlots + this.Talisman.Slots;
+		armorSet.slotTotal = headSlots + armsSlots + waistSlots + legsSlots + this.WeaponSlots + this.Talisman.Slots;
 	}
 }
 
@@ -517,19 +516,79 @@ mhset.checkAllInGemViability = function(armorSet, skillName) {
 	Check against any torso slots with torso up as options
 	Fill other slots
 	*/
-
+	if (armorSet.ViabilityRank < 0) {
+		return 0;
+	}
 
 	var targJewelPoints = armorSet.targetSkills[skillName].JewelPointsRequired;
 	var jewelPointsTot = 0;
-	var jewelOpts = this.workingSet.SkillJewelIndex[skillName];
+	var jewelOpts = this.workingSet.bestJewels[skillName];
 	if (jewelOpts) {
 		// Check torso slot first and account for torso ups
 		jewelPointsTot = this.applyTorsoSlotsSimple(armorSet,jewelOpts);
+		jewelPointsTot += this.applyNonTorsoSlotsSimple(armorSet, jewelOpts);
+	}
+	if (jewelPointsTot < targJewelPoints) {
+		armorSet.ViabilityRank = -1;
 	}
 }
 
 mhset.applyTorsoSlotsSimple = function(armorSet, jewelOpts) {
+	var jewelSkillPoints = 0;
+	switch(armorSet.TorsoSlots) {
+		case 0:
+			return jewelSkillPoints;
+			break;
+		case 1:
+			jewelSkillPoints = jewelOpts.singleSlot.SkillPoints;
+			break;
+		case 2:
+			if (jewelOpts.doubleSlot.SkillPoints >= (jewelOpts.singleSlot.SkillPoints * 2)) {
+				jewelSkillPoints = jewelOpts.doubleSlot.SkillPoints;
+			} else {
+				jewelSkillPoints = jewelOpts.singleSlot.SkillPoints * 2;
+			}
+			break;
+		case 3:
+			jewelSkillPoints = jewelOpts.tripleSlot.SkillPoints;
+			if (jewelSkillPoints < jewelOpts.doubleSlot.SkillPoints + jewelOpts.singleSlot.SkillPoints) {
+				jewelSkillPoints = jewelOpts.doubleSlot.SkillPoints + jewelOpts.singleSlot.SkillPoints;
+			} else if (jewelSkillPoints < jewelOpts.singleSlot.SkillPoints * 3) {
+				jewelSkillPoints = jewelOpts.singleSlot.SkillPoints * 3;
+			}
+			break;
+		default:
+			return 0;
+	}
 
+	return jewelSkillPoints + (jewelSkillPoints * armorSet.TorsoUps);
+}
+
+mhset.applyNonTorsoSlotsSimple = function(armorSet, jewelOpts) {
+	var singles = armorSet.slot1s;
+	var doubles = armorSet.slot2s;
+	var triples = armorSet.slot3s;
+	var jewelSkillPoints = 0;
+	// Attempt to fill everything with the maximum size jewels
+	if (triples > 0) {
+		jewelSkillPoints = jewelOpts.tripleSlot.SkillPoints * triples;
+		if (jewelSkillPoints < jewelOpts.doubleSlot.SkillPoints + jewelOpts.singleSlot.SkillPoints) {
+			jewelSkillPoints = (jewelOpts.doubleSlot.SkillPoints + jewelOpts.singleSlot.SkillPoints) * triples;
+		} else if (jewelSkillPoints < jewelOpts.singleSlot.SkillPoints * 3) {
+			jewelSkillPoints = (jewelOpts.singleSlot.SkillPoints * 3) * triples;
+		}		
+	}
+	if (doubles > 0) {
+		if (jewelOpts.doubleSlot.SkillPoints >= (jewelOpts.singleSlot.SkillPoints * 2)) {
+			jewelSkillPoints = jewelOpts.doubleSlot.SkillPoints * doubles;
+		} else {
+			jewelSkillPoints = (jewelOpts.singleSlot.SkillPoints * 2) * doubles;
+		}		
+	}
+	if (singles > 0) {
+		jewelSkillPoints = jewelOpts.singleSlot.SkillPoints * singles;
+	}
+	return jewelSkillPoints;
 }
 
 mhset.assignViabiltyRank = function(armorSet) {
@@ -572,7 +631,30 @@ mhset.spitOutTable = function(obj) {
 }
 
 
+// last two args are optional
+function processLargeArrayAsync(array, fn, maxTimePerChunk, context) {
+    context = context || window;
+    maxTimePerChunk = maxTimePerChunk || 200;
+    var index = 0;
 
+    function now() {
+        return new Date().getTime();
+    }
+
+    function doChunk() {
+        var startTime = now();
+        while (index < array.length && (now() - startTime) <= maxTimePerChunk) {
+            // callback called with args (value, index, array)
+            fn.call(context, array[index], index, array);
+            ++index;
+        }
+        if (index < array.length) {
+            // set Timeout for async iteration
+            setTimeout(doChunk, 1);
+        }
+    }    
+    doChunk();    
+}
 
 
 
@@ -583,6 +665,7 @@ mhset.test = function() {
 	mhset.setWorkingValidSkill("Challenger +2");
 	mhset.setWorkingValidSkill("Evasion +1");
 	mhset.setWorkingValidSkill("Sharpness +1");
+//	mhset.setWorkingValidSkill("Attack Up (M)");
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
 	mhset.createExperimentalSets();
