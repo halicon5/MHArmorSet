@@ -191,6 +191,7 @@ mhset.getArmorPiecesByTargetSkills = function(aHunterType) {
 	this.setArmorCandidates(aHunterType, "Waist");
 	this.setArmorCandidates(aHunterType, "Legs");
 	this.setArmorCandidates(aHunterType, "Jewel");
+	this.createFinalCandidateArrays();
 	this.getJewelDetails(this.workingSet.candidates.Jewel);
 	this.getSkillJewelIndex(this.workingSet.candidates.Jewel);
 	console.log("COMPLETE: mhset.getArmorPiecesByTargetSkills();");
@@ -221,18 +222,14 @@ mhset.findGenericArmorCandidate = function(candidateRepos, candidateArray, aHunt
 	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
 		var tup = "_" + aHunterType + "TorsoUp" + aBodyPart;
 		candidateRepos[tup] = {};
-		candidateArray.push(tup); 
 	}
 
 	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
 	if (aBodyPart !== 'Jewel') {
 //		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
 		candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
-		candidateArray.push("_" + aHunterType + "1Slot" + aBodyPart);
 		candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
-		candidateArray.push("_" + aHunterType + "2Slot" + aBodyPart);
 		candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
-		candidateArray.push("_" + aHunterType + "3Slot" + aBodyPart);
 	}
 	console.log("COMPLETE: mhset.findGenericArmorCandidate(" + aHunterType + ", " + aBodyPart + ");");
 }
@@ -262,8 +259,35 @@ mhset.findArmorCandidates = function(candidateRepos, candidateArray, aSkillName,
 				&& (saiSc.HunterType == "Both" || saiSc.HunterType == aHunterType)
 			) {
 			candidateRepos[ap] = {};
-			candidateArray.push(ap); 
 		}
+	}
+}
+
+mhset.createFinalCandidateArrays = function() {
+	var sc = this.workingSet.candidates;
+	sc.HeadArray = [];
+	for (var h in sc.Head) {
+		sc.HeadArray.push(h);
+	}
+
+	sc.BodyArray = [];
+	for (var b in sc.Body) {
+		sc.BodyArray.push(b);
+	}
+
+	sc.ArmsArray = [];
+	for (var a in sc.Arms) {
+		sc.ArmsArray.push(a);
+	}
+
+	sc.WaistArray = [];
+	for (var w in sc.Waist) {
+		sc.WaistArray.push(w);
+	}
+
+	sc.LegsArray = [];
+	for (var l in sc.Legs) {
+		sc.LegsArray.push(l);
 	}
 }
 
@@ -381,6 +405,7 @@ mhset.createExperimentalSets = function() {
 						setObj.Waist = cw;
 						setObj.Legs = cl;
 						setObj.ViabilityRank = 0;
+						this.workingSet.comboCount++;
 //						window.setTimeout(mhset.calculateInitialViability, 1, setObj);
 						this.calculateInitialViability(setObj);
 
@@ -777,6 +802,7 @@ mhset.test = function() {
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
 	mhset.createExperimentalSets2(0,0,0,0,0);
+//	mhset.createExperimentalSets();
 	//mhset.setArmorCandidates("Blademaster","Head");
 
 
