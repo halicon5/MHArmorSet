@@ -23,13 +23,13 @@ mhset.initialize = function() {
 	this.initializeRarityLimits();
 	this.UserHunterType = "Blademaster";
 	this.UserGender = "Male";
-	this.WeaponSlots = 1;
+	this.WeaponSlots = 0;
 	this.Talisman = {};
-	this.Talisman.Slots = 1;
+	this.Talisman.Slots = 0;
 	this.Talisman.Skill1 = "Evasion";
 	this.Talisman.Skill2 = "Handicraft";
-	this.Talisman.Skill1Points = 2;
-	this.Talisman.Skill2Points = 1;
+	this.Talisman.Skill1Points = 0;
+	this.Talisman.Skill2Points = 0;
 
 	this.ExclusionLists = {};
 	this.ExclusionLists.Head = {};
@@ -38,6 +38,8 @@ mhset.initialize = function() {
 	this.ExclusionLists.Waist = {};
 	this.ExclusionLists.Legs = {};
 	this.ExclusionLists.Jewel = {};
+
+	this.waitAndLookInterval = null;
 	this.test();
 //	alert('test');
 	console.log("COMPLETE: mhset.initialize();");	
@@ -172,6 +174,10 @@ mhset.clearWorkingData = function() {
 	this.workingSet.curIndexes.Arms = 0;
 	this.workingSet.curIndexes.Waist = 0;
 	this.workingSet.curIndexes.Legs = 0;
+
+	// completion flags;
+	this.workingSet.flags = {};
+	this.workingSet.flags.initialViabilityDone = 0;
 	console.log("COMPLETE: mhset.clearWorkingData();");
 }
 
@@ -395,58 +401,17 @@ http://patorjk.com/software/taag/#p=display&f=Star%20Wars&t=Experimental%0ASets
 
 
 
-
 mhset.createExperimentalSets = function() {
-	var cand = this.workingSet.candidates;
-	var i = 0;
-	var j = 0;
-	var setArray = [];
-	for (var ch in cand.Head) {
-		for (var cb in cand.Body) {
-			for (var ca in cand.Arms) {
-				for (var cw in cand.Waist) {
-					for (var cl in cand.Legs) {
-						var setObj = {};
-						setObj.Head = ch;
-						setObj.Body = cb;
-						setObj.Arms = ca;
-						setObj.Waist = cw;
-						setObj.Legs = cl;
-						setObj.ViabilityRank = 0;
-						this.workingSet.comboCount++;
-//						window.setTimeout(mhset.calculateInitialViability, 1, setObj);
-						this.calculateInitialViability(setObj);
-
-						if (setObj.ViabilityRank >= 0) {
-							setArray[i++] = setObj;
-						}
-					}
-				}
-			}
-		}
-	}
-	this.workingSet.combinations = setArray;
-}
-
-
-
-mhset.createExperimentalSets2 = function() {
 	var indicesSc = this.workingSet.curIndexes;
 	curHead = indicesSc.Head;
 	curBody = indicesSc.Body;
 	curArms = indicesSc.Arms;
 	curWaist = indicesSc.Waist;
 	curLegs = indicesSc.Legs;
-/*
-	curHead = curHead || 0;
-	curBody = curBody || 0;
-	curArms = curArms || 0;
-	curWaist = curWaist || 0;
-	curLegs = curLegs || 0;
-*/
+
 	this.workingSet.chunkCount = 0;
-    var maxTimePerChunk = 10;
-    var maxChunks = 50;
+    var maxTimePerChunk = 200;
+    var maxChunks = 150;
     var cand = this.workingSet.candidates;
 
     function now() {
@@ -454,16 +419,6 @@ mhset.createExperimentalSets2 = function() {
     }
 
     function doChunk( curHead, curBody, curArms, curWaist, curLegs) {
-    	console.log("Start chunk " + this.workingSet.chunkCount);
-		var db = document.createElement("div");
-		db.innerHTML = "Start Chunk: " 
-			+ curHead + " "
-			+ curBody + " "
-			+ curArms + " "
-			+ curWaist + " "
-			+ curHead;
-		this.rawoutput.appendChild(db)
-
 		var indicesSc = this.workingSet.curIndexes;
 
 		var legsBreak = 0;
@@ -479,21 +434,10 @@ mhset.createExperimentalSets2 = function() {
     	//(now() - startTime) <= maxTimePerChunk)
 		while (curHead < cand.HeadArray.length ) {
 			if (bodyBreak + armsBreak + waistBreak + legsBreak > 0) {
-				var db = document.createElement("div");
-				db.innerHTML = "HEAD Early Break" + this.returnCurIndices();
-				this.rawoutput.appendChild(db)
 				break;
 			}
 			if ( (now() - startTime) > maxTimePerChunk ) {
 				headBreak = 1;
-				indicesSc.Head = curHead;
-				indicesSc.Body = 0;
-				indicesSc.Arms = 0;
-				indicesSc.Waist = 0;
-				indicesSc.Legs = 0;
-				var db = document.createElement("div");
-				db.innerHTML = "HEAD Break" + this.returnCurIndices();
-				this.rawoutput.appendChild(db)
 				break;
 			}
 			while (curBody < cand.BodyArray.length ) {
@@ -502,9 +446,6 @@ mhset.createExperimentalSets2 = function() {
 				}
 				if ( (now() - startTime) > maxTimePerChunk ) {
 					bodyBreak = 1;
-					var db = document.createElement("div");
-					db.innerHTML = "BODY Break"  + this.returnCurIndices();
-					this.rawoutput.appendChild(db)
 					break;
 				}
 				while (curArms < cand.ArmsArray.length) {
@@ -513,9 +454,6 @@ mhset.createExperimentalSets2 = function() {
 					}
 					if ( (now() - startTime) > maxTimePerChunk ) {
 						armsBreak = 1;
-						var db = document.createElement("div");
-						db.innerHTML = "ARMS Break" + this.returnCurIndices();
-						this.rawoutput.appendChild(db)
 						break;
 					}
 					while (curWaist < cand.WaistArray.length) {
@@ -524,17 +462,11 @@ mhset.createExperimentalSets2 = function() {
 						}
 						if ( (now() - startTime) > maxTimePerChunk ) {
 							waistBreak = 1;
-							var db = document.createElement("div");
-							db.innerHTML = "WAIST Break"  + this.returnCurIndices();
-							this.rawoutput.appendChild(db)
 							break;
 						}
 						while (curLegs < cand.LegsArray.length) {
 							if ( (now() - startTime) > maxTimePerChunk ) {
 								legsBreak = 1;
-								var db = document.createElement("div");
-								db.innerHTML = "LEGS Break"  + this.returnCurIndices();
-								this.rawoutput.appendChild(db)
 								break;
 							}
 							var setObj = {};
@@ -547,15 +479,6 @@ mhset.createExperimentalSets2 = function() {
 							this.workingSet.comboCount++;
 							this.calculateInitialViability(setObj);
 
-							var div = document.createElement("div");
-							div.innerHTML = this.workingSet.comboCount + " (" 
-								+ indicesSc.Head + ", " 
-								+ indicesSc.Body + ", " 
-								+ indicesSc.Arms + ", " 
-								+ indicesSc.Waist + ", " 
-								+ indicesSc.Legs  + ") "
-								 + setObj.Head + " " + setObj.Body + " " + setObj.Arms + " " + setObj.Waist + " " + setObj.Legs;
-							this.rawoutput.appendChild(div);
 
 							if (setObj.ViabilityRank >= 0) {
 								this.workingSet.combinations.push(setObj);
@@ -595,16 +518,7 @@ mhset.createExperimentalSets2 = function() {
 				++curHead;
 			}
 		}
-    	console.log("End chunk" + this.workingSet.chunkCount 
-    				+ " Head: " + curHead 
-    				+ " Body: " + curBody
-    				+ " Arms: " + curArms
-    				+ " Waist: " + curWaist
-    				+ " Legs: " + curLegs
-    				);
-    	var div = document.createElement("div");
-    	div.innerHTML = "END CHUNK " + this.workingSet.chunkCount;
-    	this.rawoutput.appendChild(div);
+
 
         if ( this.workingSet.chunkCount < maxChunks &&
 	        	curHead < cand.HeadArray.length ) {
@@ -613,11 +527,31 @@ mhset.createExperimentalSets2 = function() {
             setTimeout(function() {
             	doChunk.call(that, indicesSc.Head, indicesSc.Body, indicesSc.Arms, indicesSc.Waist, indicesSc.Legs);
             },1);
+        } else if (this.workingSet.chunkCount >= maxChunks) {
+			this.workingSet.flags.initialViabilityDone = 1;
+        	var div = document.createElement("div");
+        	div.innerHTML = "Chunk limit of " + maxChunks + " reached. No more combinations will be considered";
+        	this.rawoutput.appendChild(div);
+    	} else {
+			this.workingSet.flags.initialViabilityDone = 1;
+        	var div = document.createElement("div");
+        	div.innerHTML =  this.workingSet.chunkCount + " chunks were examined.";
+        	this.rawoutput.appendChild(div);
+ 		   	this.scanCount.value = this.workingSet.comboCount;
         }
 
     }
 
     doChunk.call(this, curHead, curBody, curArms, curWaist, curLegs);
+
+    var intervalContext = this;
+    this.waitAndLookInterval = window.setInterval( function() {
+		console.log("Interval Function:" + intervalContext.waitAndLookInterval);
+
+    	if (intervalContext.workingSet.flags.initialViabilityDone == 1) {
+    		mhset.buildRealArmorSets();
+    	}
+    },1000);
 }
 
 
@@ -652,7 +586,6 @@ mhset.calculateInitialViability = function(armorSet) {
 	this.calculateRawTargetSkills(armorSet);
 	this.determineViableGemCombinations(armorSet);
 
-	this.assignViabiltyRank(armorSet);
 }
 
 mhset.calculateArmorSlots = function(armorSet) {
@@ -841,8 +774,81 @@ mhset.applyNonTorsoSlotsSimple = function(armorSet, jewelOpts) {
 	return jewelSkillPoints;
 }
 
-mhset.assignViabiltyRank = function(armorSet) {
 
+/* ====================================================================
+.______    __    __   __   __       _______                                                                        
+|   _  \  |  |  |  | |  | |  |     |       \                                                                       
+|  |_)  | |  |  |  | |  | |  |     |  .--.  |                                                                      
+|   _  <  |  |  |  | |  | |  |     |  |  |  |                                                                      
+|  |_)  | |  `--'  | |  | |  `----.|  '--'  |                                                                      
+|______/   \______/  |__| |_______||_______/                                                                       
+                                                                                                                   
+.______       _______     ___       __                                                                             
+|   _  \     |   ____|   /   \     |  |                                                                            
+|  |_)  |    |  |__     /  ^  \    |  |                                                                            
+|      /     |   __|   /  /_\  \   |  |                                                                            
+|  |\  \----.|  |____ /  _____  \  |  `----.                                                                       
+| _| `._____||_______/__/     \__\ |_______|                                                                       
+                                                                                                                   
+     ___      .______      .___  ___.   ______   .______                 _______. _______ .___________.    _______.
+    /   \     |   _  \     |   \/   |  /  __  \  |   _  \               /       ||   ____||           |   /       |
+   /  ^  \    |  |_)  |    |  \  /  | |  |  |  | |  |_)  |             |   (----`|  |__   `---|  |----`  |   (----`
+  /  /_\  \   |      /     |  |\/|  | |  |  |  | |      /               \   \    |   __|      |  |        \   \    
+ /  _____  \  |  |\  \----.|  |  |  | |  `--'  | |  |\  \----.      .----)   |   |  |____     |  |    .----)   |   
+/__/     \__\ | _| `._____||__|  |__|  \______/  | _| `._____|      |_______/    |_______|    |__|    |_______/    
+                                                                                                                   
+========================================================================*/
+
+
+mhset.buildRealArmorSets = function() {
+	console.log("CALL: mhset.buildRealArmorSets");
+	if (this.workingSet.flags.initialViabilityDone == 1) {
+		console.log("Clear Interval:" + this.waitAndLookInterval);
+		window.clearInterval(this.waitAndLookInterval);
+
+		this.examineEachArmorSetCombination();
+	}
+	console.log("COMPLETE: mhset.buildRealArmorSets");
+}
+
+mhset.examineEachArmorSetCombination = function() {
+	console.log("CALL: mhset.examineEachArmorSetCombination");
+
+	for (var i = 0; i < this.workingSet.combinations.length; i++) {
+		this.examineArmorSetCominbation(this.workingSet.combinations[i],i);
+	}
+	console.log("COMPLETE: mhset.examineEachArmorSetCombination");
+}
+
+mhset.examineArmorSetCominbation = function(armorSet, asIndex) {
+	console.log("CALL: mhset.examineArmorSetCominbation " + armorSet + " " + asIndex);
+	var pad = "                         ";
+	
+	if (armorSet) {
+		var div1 = document.createElement("div");
+		div1.setAttribute("class","armorRow")
+		div1.innerHTML = "<b>" + padRight(armorSet.Head, pad) + " " 
+			+ padRight(armorSet.Body, pad) + " " 
+			+ padRight(armorSet.Arms, pad) + " " 
+			+ padRight(armorSet.Waist, pad) + " " 
+			+ padRight(armorSet.Legs, pad) + "</b>";
+		this.rawoutput.appendChild(div1);
+		mhset.assignSkillPriority(armorSet);
+	}
+	console.log("COMPLETE: mhset.examineArmorSetCominbation " + armorSet + " " + asIndex);
+}
+
+mhset.assignSkillPriority = function(armorSet) {
+	console.log("CALL: mhset.assignSkillPriority " + armorSet );
+	/*
+	Logic: Assume that the skill with the greatest point deficiency needs to be filled first, then the next, and so on.
+	*/
+	armorSet.skillPriority = [];
+	for (sk in armorSet.targetSkills) {
+		armorSet.skillPriority.push(armorSet.targetSkills[sk]);
+	}
+	armorSet.skillPriority.sort( function(a,b) {return b.JewelPointsRequired - a.JewelPointsRequired;} );
+	console.log("COMPLETE: mhset.assignSkillPriority " + armorSet );
 }
 
 
@@ -851,6 +857,19 @@ mhset.assignViabiltyRank = function(armorSet) {
 
 
 
+
+
+
+
+
+
+
+
+
+function padRight (str,pad) {
+	var newstr = str + pad;
+	return newstr.substring(0, pad.length);
+}
 
 
 
@@ -881,140 +900,11 @@ mhset.spitOutTable = function(obj) {
 }
 
 
-// last two args are optional
-function processLargeArrayAsync(array, fn, maxTimePerChunk, context) {
-    context = context || window;
-    maxTimePerChunk = maxTimePerChunk || 200;
-    var index = 0;
-
-    function now() {
-        return new Date().getTime();
-    }
-
-    function doChunk() {
-        var startTime = now();
-        while (index < array.length && (now() - startTime) <= maxTimePerChunk) {
-            // callback called with args (value, index, array)
-            fn.call(context, array[index], index, array);
-            ++index;
-        }
-        if (index < array.length) {
-            // set Timeout for async iteration
-            setTimeout(doChunk, 1);
-        }
-    }    
-    doChunk();    
-}
 
 
 
 
 
-
-
-
-
-
-
-
-/*
-
-mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, curLegs) {
-	curHead = curHead || 0;
-	curBody = curBody || 0;
-	curArms = curArms || 0;
-	curWaist = curWaist || 0;
-	curLegs = curLegs || 0;
-
-	this.workingSet.chunkCount = 0;
-    var maxTimePerChunk = 200;
-    var maxChunks = 50;
-    var cand = this.workingSet.candidates;
-
-    function now() {
-        return new Date().getTime();
-    }
-
-    function doChunk( curHead, curBody, curArms, curWaist, curLegs) {
-    	console.log("Start chunk " + this.workingSet.chunkCount);
-    	this.workingSet.chunkCount++;
-    	var cand = this.workingSet.candidates;
-    	var startTime = now();
-    	this.scanCount.value = this.workingSet.comboCount;
-    	//(now() - startTime) <= maxTimePerChunk)
-		while (curHead < cand.HeadArray.length ) {
-			console.log("Head " + curHead + ' B' + curBody + ' A' + curArms + ' W' + curWaist + ' L' + curLegs);
-			if ( (now() - startTime) > maxTimePerChunk ) {
-				break;
-			}
-			while (curBody < cand.BodyArray.length ) {
-				if ( (now() - startTime) > maxTimePerChunk ) {
-					break;
-				}
-				while (curArms < cand.ArmsArray.length) {
-					console.log("Arms" + curArms);
-					if ( (now() - startTime) > maxTimePerChunk ) {
-						break;
-					}
-					while (curWaist < cand.WaistArray.length) {
-						if ( (now() - startTime) > maxTimePerChunk ) {
-							break;
-						}
-						while (curLegs < cand.LegsArray.length) {
-							if ( (now() - startTime) > maxTimePerChunk ) {
-								break;
-							}
-							var setObj = {};
-							setObj.Head = cand.HeadArray[curHead];
-							setObj.Body = cand.BodyArray[curBody];
-							setObj.Arms = cand.ArmsArray[curArms];
-							setObj.Waist = cand.WaistArray[curWaist];
-							setObj.Legs = cand.LegsArray[curLegs];
-							setObj.ViabilityRank = 0;
-							this.workingSet.comboCount++;
-							this.calculateInitialViability(setObj);
-
-
-							if (setObj.ViabilityRank >= 0) {
-								this.workingSet.combinations.push(setObj);
-							}
-							++curLegs;
-						}
-						curLegs = 0;
-						++curWaist;
-					}
-					curWaist = 0;
-					++curArms;
-				}
-				curArms = 0;
-				++curBody;
-			}
-			curBody = 0;
-			++curHead;
-		}
-    	console.log("End chunk" + this.workingSet.chunkCount 
-    				+ " Head: " + curHead 
-    				+ " Body: " + curBody
-    				+ " Arms: " + curArms
-    				+ " Waist: " + curWaist
-    				+ " Legs: " + curLegs
-    				);
-
-        if ( this.workingSet.chunkCount < maxChunks &&
-	        	curHead < cand.HeadArray.length ) {
-            // set Timeout for async iteration
-        	var that = this;
-            setTimeout(function() {
-            	doChunk.call(that, curHead, curBody, curArms, curWaist, curLegs);
-            },1);
-        }
-
-    }
-
-    doChunk.call(this, curHead, curBody, curArms, curWaist, curLegs);
-}
-
-*/
 
 
 
@@ -1045,16 +935,16 @@ mhset.test = function() {
 	mhset.ExclusionLists.Body["Gore Mail"] = 1;
 	mhset.ExclusionLists.Jewel["Artisan Jewel 3"] = 1;
 
-//	mhset.setWorkingValidSkill("Challenger +2");
-//	mhset.setWorkingValidSkill("Evasion +1");
-//	mhset.setWorkingValidSkill("Sharpness +1");
+	mhset.setWorkingValidSkill("Challenger +2");
+	mhset.setWorkingValidSkill("Evasion +1");
+	mhset.setWorkingValidSkill("Sharpness +1");
 //	mhset.setWorkingValidSkill("Attack Up (M)");
 //	mhset.setWorkingValidSkill("Bio Master");
-	mhset.setWorkingValidSkill("Mind's Eye");
+//	mhset.setWorkingValidSkill("Mind's Eye");
 
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
-	mhset.createExperimentalSets2(0,0,0,0,0);
+	mhset.createExperimentalSets(0,0,0,0,0);
 //	mhset.createExperimentalSets();
 	//mhset.setArmorCandidates("Blademaster","Head");
 
