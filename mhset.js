@@ -164,6 +164,14 @@ mhset.clearWorkingData = function() {
 	this.workingSet.combinations = new Array();
 	this.workingSet.comboCount = 0;
 	this.workingSet.bestJewels = {};
+
+	// used for tracking the current iteration during set match making
+	this.workingSet.curIndexes = {};
+	this.workingSet.curIndexes.Head = 0;
+	this.workingSet.curIndexes.Body = 0;
+	this.workingSet.curIndexes.Arms = 0;
+	this.workingSet.curIndexes.Waist = 0;
+	this.workingSet.curIndexes.Legs = 0;
 	console.log("COMPLETE: mhset.clearWorkingData();");
 }
 
@@ -419,6 +427,200 @@ mhset.createExperimentalSets = function() {
 	}
 	this.workingSet.combinations = setArray;
 }
+
+
+
+mhset.createExperimentalSets2 = function() {
+	var indicesSc = this.workingSet.curIndexes;
+	curHead = indicesSc.Head;
+	curBody = indicesSc.Body;
+	curArms = indicesSc.Arms;
+	curWaist = indicesSc.Waist;
+	curLegs = indicesSc.Legs;
+/*
+	curHead = curHead || 0;
+	curBody = curBody || 0;
+	curArms = curArms || 0;
+	curWaist = curWaist || 0;
+	curLegs = curLegs || 0;
+*/
+	this.workingSet.chunkCount = 0;
+    var maxTimePerChunk = 10;
+    var maxChunks = 50;
+    var cand = this.workingSet.candidates;
+
+    function now() {
+        return new Date().getTime();
+    }
+
+    function doChunk( curHead, curBody, curArms, curWaist, curLegs) {
+    	console.log("Start chunk " + this.workingSet.chunkCount);
+		var db = document.createElement("div");
+		db.innerHTML = "Start Chunk: " 
+			+ curHead + " "
+			+ curBody + " "
+			+ curArms + " "
+			+ curWaist + " "
+			+ curHead;
+		this.rawoutput.appendChild(db)
+
+		var indicesSc = this.workingSet.curIndexes;
+
+		var legsBreak = 0;
+		var waistBreak = 0;
+		var armsBreak = 0;
+		var bodyBreak = 0;
+		var headBreak = 0;
+
+    	this.workingSet.chunkCount++;
+    	var cand = this.workingSet.candidates;
+    	var startTime = now();
+    	this.scanCount.value = this.workingSet.comboCount;
+    	//(now() - startTime) <= maxTimePerChunk)
+		while (curHead < cand.HeadArray.length ) {
+			if (bodyBreak + armsBreak + waistBreak + legsBreak > 0) {
+				var db = document.createElement("div");
+				db.innerHTML = "HEAD Early Break" + this.returnCurIndices();
+				this.rawoutput.appendChild(db)
+				break;
+			}
+			if ( (now() - startTime) > maxTimePerChunk ) {
+				headBreak = 1;
+				indicesSc.Head = curHead;
+				indicesSc.Body = 0;
+				indicesSc.Arms = 0;
+				indicesSc.Waist = 0;
+				indicesSc.Legs = 0;
+				var db = document.createElement("div");
+				db.innerHTML = "HEAD Break" + this.returnCurIndices();
+				this.rawoutput.appendChild(db)
+				break;
+			}
+			while (curBody < cand.BodyArray.length ) {
+				if (armsBreak + waistBreak + legsBreak > 0) {
+					break;
+				}
+				if ( (now() - startTime) > maxTimePerChunk ) {
+					bodyBreak = 1;
+					var db = document.createElement("div");
+					db.innerHTML = "BODY Break"  + this.returnCurIndices();
+					this.rawoutput.appendChild(db)
+					break;
+				}
+				while (curArms < cand.ArmsArray.length) {
+					if (waistBreak + legsBreak > 0) {
+						break;
+					}
+					if ( (now() - startTime) > maxTimePerChunk ) {
+						armsBreak = 1;
+						var db = document.createElement("div");
+						db.innerHTML = "ARMS Break" + this.returnCurIndices();
+						this.rawoutput.appendChild(db)
+						break;
+					}
+					while (curWaist < cand.WaistArray.length) {
+						if (legsBreak > 0) {
+							break;
+						}
+						if ( (now() - startTime) > maxTimePerChunk ) {
+							waistBreak = 1;
+							var db = document.createElement("div");
+							db.innerHTML = "WAIST Break"  + this.returnCurIndices();
+							this.rawoutput.appendChild(db)
+							break;
+						}
+						while (curLegs < cand.LegsArray.length) {
+							if ( (now() - startTime) > maxTimePerChunk ) {
+								legsBreak = 1;
+								var db = document.createElement("div");
+								db.innerHTML = "LEGS Break"  + this.returnCurIndices();
+								this.rawoutput.appendChild(db)
+								break;
+							}
+							var setObj = {};
+							setObj.Head = cand.HeadArray[curHead];
+							setObj.Body = cand.BodyArray[curBody];
+							setObj.Arms = cand.ArmsArray[curArms];
+							setObj.Waist = cand.WaistArray[curWaist];
+							setObj.Legs = cand.LegsArray[curLegs];
+							setObj.ViabilityRank = 0;
+							this.workingSet.comboCount++;
+							this.calculateInitialViability(setObj);
+
+							var div = document.createElement("div");
+							div.innerHTML = this.workingSet.comboCount + " (" 
+								+ indicesSc.Head + ", " 
+								+ indicesSc.Body + ", " 
+								+ indicesSc.Arms + ", " 
+								+ indicesSc.Waist + ", " 
+								+ indicesSc.Legs  + ") "
+								 + setObj.Head + " " + setObj.Body + " " + setObj.Arms + " " + setObj.Waist + " " + setObj.Legs;
+							this.rawoutput.appendChild(div);
+
+							if (setObj.ViabilityRank >= 0) {
+								this.workingSet.combinations.push(setObj);
+							}
+
+							if (legsBreak == 0) {
+								++indicesSc.Legs;
+								++curLegs;
+							}
+						}
+
+						if (legsBreak + waistBreak == 0) {
+							curLegs = 0;
+							indicesSc.Legs = 0;
+							++indicesSc.Waist;
+							++curWaist;
+						}
+					}
+					if (legsBreak + waistBreak + armsBreak == 0) {
+						curWaist = 0;
+						indicesSc.Waist = 0;
+						++indicesSc.Arms;
+						++curArms;
+					}
+				}
+				if (legsBreak + waistBreak + armsBreak + bodyBreak == 0) {
+					curArms = 0;
+					indicesSc.Arms = 0;
+					++indicesSc.Body;
+					++curBody;
+				}
+			}
+			if (legsBreak + waistBreak + armsBreak + bodyBreak + headBreak == 0) {
+				curBody = 0;
+				indicesSc.Body = 0;
+				++indicesSc.Head;
+				++curHead;
+			}
+		}
+    	console.log("End chunk" + this.workingSet.chunkCount 
+    				+ " Head: " + curHead 
+    				+ " Body: " + curBody
+    				+ " Arms: " + curArms
+    				+ " Waist: " + curWaist
+    				+ " Legs: " + curLegs
+    				);
+    	var div = document.createElement("div");
+    	div.innerHTML = "END CHUNK " + this.workingSet.chunkCount;
+    	this.rawoutput.appendChild(div);
+
+        if ( this.workingSet.chunkCount < maxChunks &&
+	        	curHead < cand.HeadArray.length ) {
+            // set Timeout for async iteration
+        	var that = this;
+            setTimeout(function() {
+            	doChunk.call(that, indicesSc.Head, indicesSc.Body, indicesSc.Arms, indicesSc.Waist, indicesSc.Legs);
+            },1);
+        }
+
+    }
+
+    doChunk.call(this, curHead, curBody, curArms, curWaist, curLegs);
+}
+
+
 
 
 mhset.calculateInitialViability = function(armorSet) {
@@ -707,6 +909,16 @@ function processLargeArrayAsync(array, fn, maxTimePerChunk, context) {
 
 
 
+
+
+
+
+
+
+
+
+/*
+
 mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, curLegs) {
 	curHead = curHead || 0;
 	curBody = curBody || 0;
@@ -730,11 +942,28 @@ mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, cu
     	var startTime = now();
     	this.scanCount.value = this.workingSet.comboCount;
     	//(now() - startTime) <= maxTimePerChunk)
-		while (curHead < cand.HeadArray.length && (now() - startTime) <= maxTimePerChunk) {
-			while (curBody < cand.BodyArray.length && (now() - startTime) <= maxTimePerChunk) {
-				while (curArms < cand.ArmsArray.length && (now() - startTime) <= maxTimePerChunk) {
-					while (curWaist < cand.WaistArray.length && (now() - startTime) <= maxTimePerChunk) {
-						while (curLegs < cand.LegsArray.length && (now() - startTime) <= maxTimePerChunk) {
+		while (curHead < cand.HeadArray.length ) {
+			console.log("Head " + curHead + ' B' + curBody + ' A' + curArms + ' W' + curWaist + ' L' + curLegs);
+			if ( (now() - startTime) > maxTimePerChunk ) {
+				break;
+			}
+			while (curBody < cand.BodyArray.length ) {
+				if ( (now() - startTime) > maxTimePerChunk ) {
+					break;
+				}
+				while (curArms < cand.ArmsArray.length) {
+					console.log("Arms" + curArms);
+					if ( (now() - startTime) > maxTimePerChunk ) {
+						break;
+					}
+					while (curWaist < cand.WaistArray.length) {
+						if ( (now() - startTime) > maxTimePerChunk ) {
+							break;
+						}
+						while (curLegs < cand.LegsArray.length) {
+							if ( (now() - startTime) > maxTimePerChunk ) {
+								break;
+							}
 							var setObj = {};
 							setObj.Head = cand.HeadArray[curHead];
 							setObj.Body = cand.BodyArray[curBody];
@@ -772,11 +1001,7 @@ mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, cu
     				);
 
         if ( this.workingSet.chunkCount < maxChunks &&
-	        	( curHead < cand.HeadArray.length || 
-	        	curBody < cand.BodyArray.length ||
-	        	curArms < cand.ArmsArray.length ||
-	        	curWaist < cand.WaistArray.length ||
-	        	curLegs < 	cand.LegsArray.length ) ) {
+	        	curHead < cand.HeadArray.length ) {
             // set Timeout for async iteration
         	var that = this;
             setTimeout(function() {
@@ -789,16 +1014,44 @@ mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, cu
     doChunk.call(this, curHead, curBody, curArms, curWaist, curLegs);
 }
 
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+mhset.returnCurIndices = function() {
+	var sc = this.workingSet.curIndexes;
+	return " Head: " + sc.Head 
+		+ " Body: " + sc.Body 
+		+ " Arms: " + sc.Arms 
+		+ " Waist: " + sc.Waist 
+		+ " Legs: " + sc.Legs; 
+}
+
+
+
+
 
 
 mhset.test = function() {
 	mhset.ExclusionLists.Body["Gore Mail"] = 1;
 	mhset.ExclusionLists.Jewel["Artisan Jewel 3"] = 1;
 
-	mhset.setWorkingValidSkill("Challenger +2");
-	mhset.setWorkingValidSkill("Evasion +1");
-	mhset.setWorkingValidSkill("Sharpness +1");
+//	mhset.setWorkingValidSkill("Challenger +2");
+//	mhset.setWorkingValidSkill("Evasion +1");
+//	mhset.setWorkingValidSkill("Sharpness +1");
 //	mhset.setWorkingValidSkill("Attack Up (M)");
+//	mhset.setWorkingValidSkill("Bio Master");
+	mhset.setWorkingValidSkill("Mind's Eye");
+
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
 	mhset.createExperimentalSets2(0,0,0,0,0);
