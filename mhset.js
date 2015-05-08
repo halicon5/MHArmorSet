@@ -1,3 +1,7 @@
+/*
+This coding project brought to you by sleepless nights and copious amounts of Tanquerey Rangpur gin.
+*/
+
 
 /*
 Declare Constants
@@ -146,12 +150,19 @@ mhset.clearWorkingData = function() {
 	this.workingSet.targetUnlockSkills = {};
 	this.workingSet.candidates = {};
 	this.workingSet.candidates.Head = {};
+	this.workingSet.candidates.HeadArray = new Array();
 	this.workingSet.candidates.Body = {};
+	this.workingSet.candidates.BodyArray = new Array();
 	this.workingSet.candidates.Arms = {};
+	this.workingSet.candidates.ArmsArray = new Array();
 	this.workingSet.candidates.Waist = {};
+	this.workingSet.candidates.WaistArray = new Array();
 	this.workingSet.candidates.Legs = {};
+	this.workingSet.candidates.LegsArray = new Array();
 	this.workingSet.candidates.Jewel = {};
-	this.workingSet.combinations = [];
+	this.workingSet.candidates.JewelArray = new Array();
+	this.workingSet.combinations = new Array();
+	this.workingSet.comboCount = 0;
 	this.workingSet.bestJewels = {};
 	console.log("COMPLETE: mhset.clearWorkingData();");
 }
@@ -191,21 +202,43 @@ mhset.setArmorCandidates = function(aHunterType, aBodyPart) {
 
 	var targSkSc =	this.workingSet.targetUnlockSkills;
 	var candSc =	this.workingSet.candidates[aBodyPart] = {};
-
+	var candAr = 	this.workingSet.candidates[aBodyPart + 'Array'] = [];
 	// Look at each skill target skill and loop through them.
+	this.findGenericArmorCandidate(candSc, candAr, aHunterType, aBodyPart);
 	for (var sk in targSkSc) {
 		var skillName = targSkSc[sk].SkillName;
-		this.findArmorCandidates(candSc, skillName, aHunterType, aBodyPart);
+		this.findArmorCandidates(candSc, candAr, skillName, aHunterType, aBodyPart);
 	}
 
 	console.log("COMPLETE: mhset.setArmorCandidates(" + aHunterType + ", " + aBodyPart + ");");
 }
 
-
-mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aBodyPart) {
+mhset.findGenericArmorCandidate = function(candidateRepos, candidateArray, aHunterType, aBodyPart) {
+	console.log("CALL: mhset.findGenericArmorCandidate(" + aHunterType + ", " + aBodyPart + ");");
 	/*
 	Any piece with Torso up is alawys candidate and will be included
 	*/	
+	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
+		var tup = "_" + aHunterType + "TorsoUp" + aBodyPart;
+		candidateRepos[tup] = {};
+		candidateArray.push(tup); 
+	}
+
+	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
+	if (aBodyPart !== 'Jewel') {
+//		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
+		candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
+		candidateArray.push("_" + aHunterType + "1Slot" + aBodyPart);
+		candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
+		candidateArray.push("_" + aHunterType + "2Slot" + aBodyPart);
+		candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
+		candidateArray.push("_" + aHunterType + "3Slot" + aBodyPart);
+	}
+	console.log("COMPLETE: mhset.findGenericArmorCandidate(" + aHunterType + ", " + aBodyPart + ");");
+}
+
+mhset.findArmorCandidates = function(candidateRepos, candidateArray, aSkillName, aHunterType, aBodyPart) {
+
 	/* // Removed 5/2/2015
 	for (var ap in this.SkillArmorIndex["Torso Up"]) {
 		var saiSc = this.SkillArmorIndex["Torso Up"][ap];
@@ -218,9 +251,6 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 		}
 	}
 	*/
-	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
-		candidateRepos["_" + aHunterType + "TorsoUp" + aBodyPart] = {};
-	}
 
 	for (var ap in this.SkillArmorIndex[aSkillName]) {
 		var saiSc = this.SkillArmorIndex[aSkillName][ap];
@@ -232,17 +262,9 @@ mhset.findArmorCandidates = function(candidateRepos, aSkillName, aHunterType, aB
 				&& (saiSc.HunterType == "Both" || saiSc.HunterType == aHunterType)
 			) {
 			candidateRepos[ap] = {};
+			candidateArray.push(ap); 
 		}
 	}
-
-	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
-	if (aBodyPart !== 'Jewel') {
-//		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
-	}
-
 }
 
 mhset.getJewelDetails = function(aJewelCands) {
@@ -375,6 +397,7 @@ mhset.createExperimentalSets = function() {
 
 
 mhset.calculateInitialViability = function(armorSet) {
+
 	armorSet.slot1s = 0;
  	armorSet.slot2s = 0;
 	armorSet.slot3s = 0;
@@ -658,6 +681,91 @@ function processLargeArrayAsync(array, fn, maxTimePerChunk, context) {
 
 
 
+
+mhset.createExperimentalSets2 = function(curHead, curBody, curArms, curWaist, curLegs) {
+	curHead = curHead || 0;
+	curBody = curBody || 0;
+	curArms = curArms || 0;
+	curWaist = curWaist || 0;
+	curLegs = curLegs || 0;
+
+	this.workingSet.chunkCount = 0;
+    var maxTimePerChunk = 200;
+    var maxChunks = 50;
+    var cand = this.workingSet.candidates;
+
+    function now() {
+        return new Date().getTime();
+    }
+
+    function doChunk( curHead, curBody, curArms, curWaist, curLegs) {
+    	console.log("Start chunk " + this.workingSet.chunkCount);
+    	this.workingSet.chunkCount++;
+    	var cand = this.workingSet.candidates;
+    	var startTime = now();
+    	this.scanCount.value = this.workingSet.comboCount;
+    	//(now() - startTime) <= maxTimePerChunk)
+		while (curHead < cand.HeadArray.length && (now() - startTime) <= maxTimePerChunk) {
+			while (curBody < cand.BodyArray.length && (now() - startTime) <= maxTimePerChunk) {
+				while (curArms < cand.ArmsArray.length && (now() - startTime) <= maxTimePerChunk) {
+					while (curWaist < cand.WaistArray.length && (now() - startTime) <= maxTimePerChunk) {
+						while (curLegs < cand.LegsArray.length && (now() - startTime) <= maxTimePerChunk) {
+							var setObj = {};
+							setObj.Head = cand.HeadArray[curHead];
+							setObj.Body = cand.BodyArray[curBody];
+							setObj.Arms = cand.ArmsArray[curArms];
+							setObj.Waist = cand.WaistArray[curWaist];
+							setObj.Legs = cand.LegsArray[curLegs];
+							setObj.ViabilityRank = 0;
+							this.workingSet.comboCount++;
+							this.calculateInitialViability(setObj);
+
+
+							if (setObj.ViabilityRank >= 0) {
+								this.workingSet.combinations.push(setObj);
+							}
+							++curLegs;
+						}
+						curLegs = 0;
+						++curWaist;
+					}
+					curWaist = 0;
+					++curArms;
+				}
+				curArms = 0;
+				++curBody;
+			}
+			curBody = 0;
+			++curHead;
+		}
+    	console.log("End chunk" + this.workingSet.chunkCount 
+    				+ " Head: " + curHead 
+    				+ " Body: " + curBody
+    				+ " Arms: " + curArms
+    				+ " Waist: " + curWaist
+    				+ " Legs: " + curLegs
+    				);
+
+        if ( this.workingSet.chunkCount < maxChunks &&
+	        	( curHead < cand.HeadArray.length || 
+	        	curBody < cand.BodyArray.length ||
+	        	curArms < cand.ArmsArray.length ||
+	        	curWaist < cand.WaistArray.length ||
+	        	curLegs < 	cand.LegsArray.length ) ) {
+            // set Timeout for async iteration
+        	var that = this;
+            setTimeout(function() {
+            	doChunk.call(that, curHead, curBody, curArms, curWaist, curLegs);
+            },1);
+        }
+
+    }
+
+    doChunk.call(this, curHead, curBody, curArms, curWaist, curLegs);
+}
+
+
+
 mhset.test = function() {
 	mhset.ExclusionLists.Body["Gore Mail"] = 1;
 	mhset.ExclusionLists.Jewel["Artisan Jewel 3"] = 1;
@@ -668,7 +776,7 @@ mhset.test = function() {
 //	mhset.setWorkingValidSkill("Attack Up (M)");
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
-	mhset.createExperimentalSets();
+	mhset.createExperimentalSets2(0,0,0,0,0);
 	//mhset.setArmorCandidates("Blademaster","Head");
 
 
