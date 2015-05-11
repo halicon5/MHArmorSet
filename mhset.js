@@ -13,11 +13,14 @@ mhset.SLOTWEIGHT = 1;
 mhset.initialize = function() {
 	console.log("CALL: mhset.initialize();");
 
+	this.cancelGrinder = false;
+	this.maxProcessingChunks = 10000000;
 	this.rawoutput = document.getElementById("rawoutput");
 	this.scanCount = document.getElementById("scanCount");
 	this.failures = [];
 //	this.failures[0] = "initialize";
 
+	this.UIObjects = {};
 	this.createSkillArmorIndexes();
 	this.clearWorkingData();
 	this.initializeRarityLimits();
@@ -38,9 +41,20 @@ mhset.initialize = function() {
 	this.ExclusionLists.Waist = {};
 	this.ExclusionLists.Legs = {};
 	this.ExclusionLists.Jewel = {};
+	this.ExclusionLists.Sets = {};
 
 	this.waitAndLookInterval = null;
-	this.test();
+
+	this.jemComboSlots = {};
+	this.jemComboSlots.tripleX1 = 3;
+	this.jemComboSlots.doubleX1SingleX1 = 3;
+	this.jemComboSlots.singleX3 = 3;
+	this.jemComboSlots.doubleX1 = 2;
+	this.jemComboSlots.singleX2 = 2;
+	this.jemComboSlots.singleX1 = 1;
+
+	this.createSkillChoiceDropdowns();
+//	this.test();
 //	alert('test');
 	console.log("COMPLETE: mhset.initialize();");	
 }
@@ -49,7 +63,7 @@ mhset.createSkillArmorIndexes = function() {
 	console.log("CALL: mhset.createSkillArmorIndex();");
 	if (this.SkillArmorData) {
 		var sadSc = this.SkillArmorData;
-
+		this.createSkillListArray();
 		this.SkillArmorIndex = {};
 		this.ArmorSkillIndex = {};
 		for (var i = 0; i < sadSc.length; i++) {
@@ -110,14 +124,35 @@ mhset.createSkillArmorIndexes = function() {
 	console.log("COMPLETE: mhset.createSkillArmorIndex();");	
 }
 
+mhset.createSkillListArray = function(){
+	this.SkillListArray = [];
+	for (var sk in this.SkillList) {
+		this.SkillListArray.push(this.SkillList[sk]);
+		this.SkillList[sk].ActivatedSkill = sk;
+	}
+	this.SkillListArray.sort( function(a,b) {
+		var skA, skB;
+		skA = a.SkillName.toLowerCase() + '_' + a.ActivatedSkill.toLowerCase();
+		skB = b.SkillName.toLowerCase() + '_' + b.ActivatedSkill.toLowerCase();
+		if ( skA < skB ) {
+			return -1;
+		}
+		if (skA > skB ) {
+			return 1;
+		}
+		return 0;
+	});
+}
+
+
 mhset.initializeRarityLimits = function() {
 	console.log("CALL: mhset.initializeRarityLimits();");
 	this.rarityLimits = {};
-	this.rarityLimits.Head = {min: 3, max: 4};
-	this.rarityLimits.Body = {min: 3, max: 4};
-	this.rarityLimits.Arms = {min: 3, max: 4};
-	this.rarityLimits.Waist = {min: 3, max: 4};
-	this.rarityLimits.Legs = {min: 3, max: 4};
+	this.rarityLimits.Head = {min: 7, max: 8};
+	this.rarityLimits.Body = {min: 7, max: 8};
+	this.rarityLimits.Arms = {min: 7, max: 8};
+	this.rarityLimits.Waist = {min: 7, max: 8};
+	this.rarityLimits.Legs = {min: 7, max: 8};
 	this.rarityLimits.Jewel = {min: 1, max: 10};
 	console.log("COMPLETE: mhset.initializeRarityLimits();");
 }
@@ -127,7 +162,25 @@ mhset.assignArmorDataToSkillArmorIndex = function(idxSkillArmor, piece) {
 }
 
 
+mhset.createSkillChoiceDropdowns = function() {
+	this.UIObjects.skillChoiceDrops = {};
+	var scdSc = this.UIObjects.skillChoiceDrops;
+	for (var di = 1; di <= 6; di++) {
+		scdSc["skill" + di] = document.getElementById("skillChoice" + di);
 
+		var nullOpt = document.createElement("option");
+		nullOpt.value = "";
+		nullOpt.innerHTML = "-- No Skill Selected --";
+		scdSc["skill" + di].appendChild(nullOpt);
+
+		for (var i = 0; i < this.SkillListArray.length; i++) {
+			var opt = document.createElement("option");
+			opt.value = this.SkillListArray[i].ActivatedSkill;
+			opt.innerHTML = this.SkillListArray[i].ActivatedSkill;
+			scdSc["skill" + di].appendChild(opt);
+		}
+	}
+}
 
 /*
 ____    __    ____  ______   .______       __  ___  __  .__   __.   _______ 
@@ -183,7 +236,7 @@ mhset.clearWorkingData = function() {
 
 
 
-mhset.setWorkingValidSkill = function(aUnlockSkill) {
+mhset.setWorkingValidSkill = function(aUnlockSkill,skillNum) {
 	console.log("CALL: mhset.setWorkingValidSkill('" + aUnlockSkill + "');");
 
 	if (this.SkillList[aUnlockSkill]) {
@@ -241,9 +294,17 @@ mhset.findGenericArmorCandidate = function(candidateRepos, candidateArray, aHunt
 	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
 	if (aBodyPart !== 'Jewel') {
 //		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
-		candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
+		if (!this.ExclusionLists[aBodyPart]["Any 1 Slot"]) {
+			candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
+		}
+
+		if (!this.ExclusionLists[aBodyPart]["Any 2 Slot"]) {
+			candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
+		}
+
+		if (!this.ExclusionLists[aBodyPart]["Any 3 Slot"]) {
+			candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
+		}
 	}
 	console.log("COMPLETE: mhset.findGenericArmorCandidate(" + aHunterType + ", " + aBodyPart + ");");
 }
@@ -411,7 +472,7 @@ mhset.createExperimentalSets = function() {
 
 	this.workingSet.chunkCount = 0;
     var maxTimePerChunk = 200;
-    var maxChunks = 150;
+    var maxChunks = this.maxProcessingChunks;
     var cand = this.workingSet.candidates;
 
     function now() {
@@ -519,8 +580,12 @@ mhset.createExperimentalSets = function() {
 			}
 		}
 
-
-        if ( this.workingSet.chunkCount < maxChunks &&
+		if (this.cancelGrinder == true) {
+			var msg = "Matchmaking Cancelled By User.";
+			this.spitOutToDisplay(msg);
+			this.cancelGrinder == false;
+			this.workingSet.flags.initialViabilityDone = 1;
+		} else if ( this.workingSet.chunkCount < maxChunks &&
 	        	curHead < cand.HeadArray.length ) {
             // set Timeout for async iteration
         	var that = this;
@@ -566,7 +631,6 @@ mhset.calculateInitialViability = function(armorSet) {
 	armorSet.TorsoUps = 0;
 	armorSet.TorsoSlots = 0;
 	armorSet.targetSkills = {};
-	armorSet.JemSets = [];
 
 	this.calculateArmorSlots(armorSet);
 	this.countTorsoUps(armorSet);
@@ -584,8 +648,10 @@ mhset.calculateInitialViability = function(armorSet) {
 	}
 
 	this.calculateRawTargetSkills(armorSet);
-	this.determineViableGemCombinations(armorSet);
-
+	this.determineIfThereArePossiblyEnoughSlots(armorSet);
+	if (armorSet.ViabilityRank > 0) {
+		this.determineViableGemCombinations(armorSet);
+	}
 }
 
 mhset.calculateArmorSlots = function(armorSet) {
@@ -680,7 +746,18 @@ mhset.getSkillPointsByArmorPiece = function(aArmorPiece, aSkillName) {
 	}
 }
 
+mhset.determineIfThereArePossiblyEnoughSlots = function(armorSet) {
+	var maxPossiblePointsToJemIn = 0;
+	var totalJewelPointsRequired = 0;
 
+	maxPossiblePointsToJemIn = (armorSet.TorsoSlots * 2 * armorSet.TorsoUps) + (armorSet.TorsoSlots + armorSet.slot1s + armorSet.slot2s + armorSet.slot3s) * 2;
+	for (var sk in armorSet.targetSkills) {
+		totalJewelPointsRequired += armorSet.targetSkills[sk].JewelPointsRequired;
+	}
+	if (maxPossiblePointsToJemIn < totalJewelPointsRequired) {
+		armorSet.ViabilityRank = -1;
+	}
+}
 
 mhset.determineViableGemCombinations = function(armorSet) {
 	/*
@@ -821,25 +898,23 @@ mhset.examineEachArmorSetCombination = function() {
 }
 
 mhset.examineArmorSetCominbation = function(armorSet, asIndex) {
-	console.log("CALL: mhset.examineArmorSetCominbation " + armorSet + " " + asIndex);
-	var pad = "                         ";
+	var pad = "                              ";
 	
 	if (armorSet) {
 		var div1 = document.createElement("div");
-		div1.setAttribute("class","armorRow")
-		div1.innerHTML = "<b>" + padRight(armorSet.Head, pad) + " " 
+		div1.setAttribute("class","armorRow");
+		div1.innerHTML = padRight(asIndex, "       ") + padRight(armorSet.Head, pad) + " " 
 			+ padRight(armorSet.Body, pad) + " " 
 			+ padRight(armorSet.Arms, pad) + " " 
 			+ padRight(armorSet.Waist, pad) + " " 
-			+ padRight(armorSet.Legs, pad) + "</b>";
+			+ padRight(armorSet.Legs, pad);
 		this.rawoutput.appendChild(div1);
-		mhset.assignSkillPriority(armorSet);
+		this.assignSkillPriority(armorSet);
+		this.createJemSets(armorSet);
 	}
-	console.log("COMPLETE: mhset.examineArmorSetCominbation " + armorSet + " " + asIndex);
 }
 
 mhset.assignSkillPriority = function(armorSet) {
-	console.log("CALL: mhset.assignSkillPriority " + armorSet );
 	/*
 	Logic: Assume that the skill with the greatest point deficiency needs to be filled first, then the next, and so on.
 	*/
@@ -848,17 +923,569 @@ mhset.assignSkillPriority = function(armorSet) {
 		armorSet.skillPriority.push(armorSet.targetSkills[sk]);
 	}
 	armorSet.skillPriority.sort( function(a,b) {return b.JewelPointsRequired - a.JewelPointsRequired;} );
-	console.log("COMPLETE: mhset.assignSkillPriority " + armorSet );
+
+	var div1 = document.createElement("div");
+	div1.setAttribute("class","armorRow");
+	div1.innerHTML = "       Jewel Points Required: ";
+	for (var i = 0; i < armorSet.skillPriority.length; i++) {
+		div1.innerHTML += " " + armorSet.skillPriority[i].SkillName + ": " + armorSet.skillPriority[i].JewelPointsRequired;
+	}
+	this.rawoutput.appendChild(div1);
+}
+
+mhset.createJemSets = function(armorSet) {
+	/*
+	Prioritize the highest priority skill need until it is perfectly filled
+		- Fill torso first if possible and it doesn't exceed the points required on any given skill.
+		- Then fill 3 slots (check if over)
+		- Then fill 2 slots (check if over)
+		- Then fill 1 slots (check if over)
+		- Fill remaining torso slots
+	*/
+	var JemSet = {};
+	JemSet.TorsoRemaining = armorSet.TorsoSlots;
+	JemSet.TorsoJems = {};
+	JemSet.slot3sRemaining = armorSet.slot3s;
+	JemSet.slot2sRemaining = armorSet.slot2s;
+	JemSet.slot1sRemaining = armorSet.slot1s;
+	JemSet.skillTotals = {};
+	for (var tsk in armorSet.targetSkills) {
+		JemSet.skillTotals[tsk] = {};
+		JemSet.skillTotals[tsk].SkillName = tsk;
+		JemSet.skillTotals[tsk].JewelPointsRequired = armorSet.targetSkills[tsk].JewelPointsRequired;
+		JemSet.skillTotals[tsk].JewelPointsApplied = 0;
+		JemSet.skillTotals[tsk].torsoJewelPoints = 0;
+		JemSet.skillTotals[tsk].otherJewelPoints = 0;
+		JemSet.skillTotals[tsk].TorsoUps = armorSet.TorsoUps;
+		if (JemSet.skillTotals[tsk].JewelPointsRequired == 0) {
+			JemSet.activeSkillCount++;
+		}
+	}
+	JemSet.skillPriority = [];
+	for (var st in JemSet.skillTotals) {
+		JemSet.skillPriority.push(JemSet.skillTotals[st]);
+	}
+	armorSet.JemSet = JemSet;
+
+	// Start doing something with the JemSet object
+	this.sortInitialJemSetSkillPriority(armorSet.JemSet); // always make the skill requiring the most points priority
+	this.applyBestInitialTorsoJems(armorSet);
+	this.sortJemSetSkillPriority(armorSet.JemSet); // always make the skill requiring the most points priority and the gems that require the most slots is a priority
+	this.applyBestJems(armorSet);
+}
+
+mhset.sortJemSetSkillPriority = function(JemSet) {
+	JemSet.skillPriority.sort( function(a,b) {
+		var aIncomplete = 0;
+		var bIncomplete = 0;
+
+		aIncomplete = (a.JewelPointsApplied >= a.JewelPointsRequired) ? 0 : 1;
+		bIncomplete = (b.JewelPointsApplied >= b.JewelPointsRequired) ? 0 : 1;
+		if (aIncomplete != bIncomplete) {
+			return bIncomplete - aIncomplete;
+		}
+
+		var aSlots = 0;
+		var bSlots = 0;
+
+		// pick the skill that has the highest minimum slot requirement for its smallest gem.
+		if(mhset.workingSet.bestJewels[a.SkillName].singleSlot.SkillPoints) {
+			aSlots = 1;
+		} else if(mhset.workingSet.bestJewels[a.SkillName].doubleSlot.SkillPoints) {
+			aSlots = 2;
+		} else if(mhset.workingSet.bestJewels[a.SkillName].tripleSlot.SkillPoints) {
+			aSlots = 3;
+		}
+
+		if(mhset.workingSet.bestJewels[b.SkillName].singleSlot.SkillPoints) {
+			bSlots = 1;
+		} else if(mhset.workingSet.bestJewels[b.SkillName].doubleSlot.SkillPoints) {
+			bSlots = 2;
+		} else if(mhset.workingSet.bestJewels[b.SkillName].tripleSlot.SkillPoints) {
+			bSlots = 3;
+		}
+
+		if (aSlots != bSlots) {
+			return bSlots - aSlots;
+		} else {
+			// if it is a tie, we just go with skillpoints required
+			return b.JewelPointsRequired - a.JewelPointsRequired;
+		}
+	} );
+}
+
+mhset.sortInitialJemSetSkillPriority = function(JemSet) {
+	JemSet.skillPriority.sort( function(a,b) {return b.JewelPointsRequired - a.JewelPointsRequired;} );	
+}
+
+
+/*=================================================
+ __  .__   __.  __  .___________. __       ___       __      
+|  | |  \ |  | |  | |           ||  |     /   \     |  |     
+|  | |   \|  | |  | `---|  |----`|  |    /  ^  \    |  |     
+|  | |  . `  | |  |     |  |     |  |   /  /_\  \   |  |     
+|  | |  |\   | |  |     |  |     |  |  /  _____  \  |  `----.
+|__| |__| \__| |__|     |__|     |__| /__/     \__\ |_______|
+                                                             
+.___________.  ______   .______          _______.  ______    
+|           | /  __  \  |   _  \        /       | /  __  \   
+`---|  |----`|  |  |  | |  |_)  |      |   (----`|  |  |  |  
+    |  |     |  |  |  | |      /        \   \    |  |  |  |  
+    |  |     |  `--'  | |  |\  \----.----)   |   |  `--'  |  
+    |__|      \______/  | _| `._____|_______/     \______/   
+                                                             
+       __   _______ .___  ___.      _______.                 
+      |  | |   ____||   \/   |     /       |                 
+      |  | |  |__   |  \  /  |    |   (----`                 
+.--.  |  | |   __|  |  |\/|  |     \   \                     
+|  `--'  | |  |____ |  |  |  | .----)   |                    
+ \______/  |_______||__|  |__| |_______/                     
+
+=======================================================*/
+
+
+
+mhset.applyBestInitialTorsoJems = function(armorSet) {
+	console.log ("applyBestTorsoJems");
+	if (armorSet.JemSet.TorsoRemaining > 0) {
+		var div1 = document.createElement("div");
+		div1.setAttribute("class","armorRow");
+		div1.innerHTML = "       Attempting to fill " + armorSet.JemSet.TorsoRemaining + " Torso Slots";
+		this.rawoutput.appendChild(div1);
+
+		for (var i = 0; i < armorSet.JemSet.skillPriority.length && armorSet.JemSet.TorsoRemaining > 0; i++) {
+			this.applyInitialTorsoJemsBySkill(armorSet, armorSet.JemSet.skillPriority[i].SkillName);
+		}
+	} else {
+		var div1 = document.createElement("div");
+		div1.setAttribute("class","armorRow");
+		div1.innerHTML = "       No remaining torso slots to apply;";
+		this.rawoutput.appendChild(div1);
+	}
+}
+
+
+mhset.applyInitialTorsoJemsBySkill = function(armorSet, aSkillName) {
+	var div1 = document.createElement("div");
+	div1.setAttribute("class","armorRow");
+	div1.innerHTML = "           " + aSkillName;
+	this.rawoutput.appendChild(div1);
+
+
+
+	var res = {};
+	res.tripleX1 = 0;
+	res.doubleX1SingleX1 = 0;
+	res.singleX3 = 0;
+	res.doubleX1 = 0;
+	res.singleX2 = 0;
+	res.singleX1 = 0;
+
+	var curBest = {};
+	curBest.option = "NONE";
+	// we actually don't want anything with more points than is required on torso, so an absurdly high number is used here.
+	// Likewise with slot point ratio for determining efficiency.
+	curBest.viab = 1000;
+	curBest.points = 0;
+	curBest.slotPointRatio = 1000;
+
+	var viab = {};
+	viab.tripleX1 = -100;
+	viab.doubleX1SingleX1 = -100;
+	viab.singleX3 = -100;
+	viab.doubleX1 = -100;
+	viab.singleX2 = -100;
+	viab.singleX1 = -100;
+
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+
+	// Check the viability of any slot combos
+	if (asJs.TorsoRemaining == 3) {
+		this.checkInitTorsoTripleX1(armorSet, aSkillName, res, viab, curBest);
+		this.checkInitTorsoDoubleX1SingleX1(armorSet, aSkillName, res, viab, curBest);
+		this.checkInitTorsoSingleX3(armorSet, aSkillName, res, viab, curBest);
+	}
+
+	if (asJs.TorsoRemaining >= 2) {
+		this.checkInitTorsoDoubleX1(armorSet, aSkillName, res, viab, curBest);
+		this.checkInitTorsoSingleX2(armorSet, aSkillName, res, viab, curBest);
+	}
+
+	if (asJs.TorsoRemaining >= 1) {
+		this.checkInitTorsoSingleX1(armorSet, aSkillName, res, viab, curBest);
+	}
+
+	this.setInitialTorsoGemsIntoSlots(armorSet, aSkillName, curBest);
+}
+
+mhset.calculateAppliedSkillPoints = function(SkillTotalSet) {
+	if (SkillTotalSet) {
+		SkillTotalSet.JewelPointsApplied = SkillTotalSet.otherJewelPoints + SkillTotalSet.torsoJewelPoints + (SkillTotalSet.torsoJewelPoints * SkillTotalSet.TorsoUps);
+	}
+}
+
+mhset.setInitialTorsoGemsIntoSlots = function(armorSet, aSkillName, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (curBest && curBest.option != "NONE" && 	this.workingSet.bestJewels[aSkillName]) {
+		switch(curBest.option) {
+			case "tripleX1":
+				var jem3 = {};
+				jem3.skillName = aSkillName;
+				jem3.skillPoints = bjSc.tripleSlot.SkillPoints;
+				jem3.Jewel = bjSc.tripleSlot.Jewel;
+				jem3.qty = 1;
+				asJs.TorsoJems[bjSc.tripleSlot.Jewel] = jem3;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 3;
+
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.tripleSlot.SkillPoints;
+
+				break;
+
+			case "doubleX1SingleX1":
+				var jem2 = {};
+				jem2.skillName = aSkillName;
+				jem2.skillPoints = bjSc.doubleSlot.SkillPoints;
+				jem2.Jewel = bjSc.doubleSlot.Jewel;
+				jem2.qty = 1;
+				asJs.TorsoJems[bjSc.doubleSlot.Jewel] = jem2;
+
+				var jem1 = {};
+				jem1.skillName = aSkillName;
+				jem1.skillPoints = bjSc.singleSlot.SkillPoints;
+				jem1.Jewel = bjSc.singleSlot.Jewel;
+				jem1.qty = 1;
+				asJs.TorsoJems[bjSc.singleSlot.Jewel] = jem1;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 3;
+
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.doubleSlot.SkillPoints + bjSc.singleSlot.SkillPoints ;
+				break;
+
+			case "singleX3":
+				var jem1 = {};
+				jem1.skillPoints = bjSc.singleSlot.SkillPoints;
+				jem1.Jewel = bjSc.singleSlot.Jewel;
+				jem1.qty = 3;
+				asJs.TorsoJems[bjSc.singleSlot.Jewel] = jem1;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 3;
+
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.singleSlot.SkillPoints * 3 ;
+				break;
+
+			case "doubleX1":
+				var jem2 = {};
+				jem2.skillName = aSkillName;
+				jem2.skillPoints = bjSc.doubleSlot.SkillPoints;
+				jem2.Jewel = bjSc.doubleSlot.Jewel;
+				jem2.qty = 1;
+				asJs.TorsoJems[bjSc.doubleSlot.Jewel] = jem2;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 2;
+
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.doubleSlot.SkillPoints;
+				break;
+
+			case "singleX2":
+				var jem1 = {};
+				jem1.skillName = aSkillName;
+				jem1.skillPoints = bjSc.singleSlot.SkillPoints;
+				jem1.Jewel = bjSc.singleSlot.Jewel;
+				jem1.qty = 2;
+				asJs.TorsoJems[bjSc.singleSlot.Jewel] = jem1;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 2;
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.singleSlot.SkillPoints * 2 ;
+
+				break;
+			case "singleX1":
+
+				var jem1 = {};
+				jem1.skillName = aSkillName;
+				jem1.skillPoints = bjSc.singleSlot.SkillPoints;
+				jem1.Jewel = bjSc.singleSlot.Jewel;
+				jem1.qty = 1;
+				asJs.TorsoJems[bjSc.singleSlot.Jewel] = jem1;
+
+				// reduce avail torso slots
+				asJs.TorsoRemaining = asJs.TorsoRemaining - 1;
+				// add torso points to skillTotal object
+				asJsSkt.torsoJewelPoints += bjSc.singleSlot.SkillPoints;
+				break;
+			default:
+				// do nothing
+		}
+
+		this.calculateAppliedSkillPoints(asJsSkt);
+	}
+}
+
+
+mhset.checkMostEfficientInitialTorsoJems = function(jemArrangement, asJsSkt, res, viab, curBest) {	
+	viab[jemArrangement] = asJsSkt.JewelPointsRequired - res[jemArrangement];
+	var curSlotPointRatio = this.jemComboSlots[jemArrangement] / res[jemArrangement];
+
+	var msg = "                         " + res[jemArrangement] + "/" + this.jemComboSlots[jemArrangement] + " = " + curSlotPointRatio;
+	this.spitOutToDisplay(msg,"armorRow");
+
+	var msg = "                         Viability - (" + viab[jemArrangement] + ")";
+	this.spitOutToDisplay(msg,"armorRow");
+
+	// Zero is our sweet spot. Anything that hits zero perfectly filled a skill without going over
+	if (viab[jemArrangement] >= 0) {
+		this.spitOutToDisplay("                           POSSIBLE CANDIDATE","armorRow");
+		if (viab[jemArrangement] == curBest.viab) {
+			if (curSlotPointRatio < curBest.slotPointRatio) {
+				curBest.option = jemArrangement;
+				curBest.viab = viab[jemArrangement];
+				curBest.slotPointRatio = curSlotPointRatio;
+				curBest.points = res[jemArrangement];
+			}
+		} else if (viab[jemArrangement] < curBest.viab) {
+			// use the one with the lowest point gap.
+			curBest.option = jemArrangement;
+			curBest.viab = viab[jemArrangement];
+			curBest.slotPointRatio = curSlotPointRatio;
+			curBest.points = res[jemArrangement];
+		}
+	}
+	else {
+		this.spitOutToDisplay("                           DO NOT USE","armorRow");
+		// do nothing, use the current curBest options.
+	}
+	var msg = "                                      " + curBest.option + " P:" + curBest.points + " V:" + curBest.viab + " R:" + curBest.slotPointRatio;
+	this.spitOutToDisplay(msg,"armorRow");
+}
+
+mhset.checkInitTorsoTripleX1 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.tripleSlot.SkillPoints > 0) {
+
+		res.tripleX1 = bjSc.tripleSlot.SkillPoints + (bjSc.tripleSlot.SkillPoints * asJsSkt.TorsoUps)
+		var msg = "                Found Triple Slot Jem - " + bjSc.tripleSlot.Jewel + " (" + res.tripleX1 + ")";
+		this.spitOutToDisplay(msg,"armorRow");
+
+		this.checkMostEfficientInitialTorsoJems("tripleX1", asJsSkt, res, viab, curBest);
+
+	}
+}
+
+mhset.checkInitTorsoDoubleX1SingleX1 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.singleSlot.SkillPoints > 0
+		&& bjSc.doubleSlot.SkillPoints > 0) {
+
+		var msg = "                Found 2 & 1 Slot Jem combo - " + bjSc.singleSlot.Jewel + " and " + bjSc.doubleSlot.Jewel + " (" + res.doubleX1SingleX1 + ")";;
+		this.spitOutToDisplay(msg,"armorRow");
+
+		res.doubleX1SingleX1 = bjSc.doubleSlot.SkillPoints + bjSc.singleSlot.SkillPoints + (bjSc.doubleSlot.SkillPoints + bjSc.singleSlot.SkillPoints) * asJsSkt.TorsoUps;
+		this.checkMostEfficientInitialTorsoJems("doubleX1SingleX1", asJsSkt, res, viab, curBest);
+	}
+}
+
+mhset.checkInitTorsoSingleX3 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.singleSlot.SkillPoints > 0) {
+
+		var msg = "                Found 3 x 1 Slot Jems - 3x " + bjSc.singleSlot.Jewel + " (" + res.singleX3 + ")";
+		this.spitOutToDisplay(msg,"armorRow");
+
+		res.singleX3 = (bjSc.singleSlot.SkillPoints * 3) + (bjSc.singleSlot.SkillPoints * 3) * asJsSkt.TorsoUps;
+		this.checkMostEfficientInitialTorsoJems("singleX3", asJsSkt, res, viab, curBest);
+
+	}
 }
 
 
 
+mhset.checkInitTorsoDoubleX1 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.doubleSlot.SkillPoints > 0) {
+
+		var msg = "                Found Double Slot Jem - " + bjSc.doubleSlot.Jewel + " (" + res.doubleX1 + ")";
+		this.spitOutToDisplay(msg,"armorRow");
+
+		res.doubleX1 = bjSc.doubleSlot.SkillPoints + bjSc.doubleSlot.SkillPoints * asJsSkt.TorsoUps;
+		this.checkMostEfficientInitialTorsoJems("doubleX1", asJsSkt, res, viab, curBest);
+
+	}
+}
+
+mhset.checkInitTorsoSingleX2 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.singleSlot.SkillPoints > 0) {
+
+		var msg = "                Found 2 x 1 Slot Jem - " + bjSc.singleSlot.Jewel + " (" + res.singleX2 + ")";
+		this.spitOutToDisplay(msg,"armorRow");
+
+		res.singleX2 = (bjSc.singleSlot.SkillPoints * 2) + (bjSc.singleSlot.SkillPoints * 2) * asJsSkt.TorsoUps;
+		this.checkMostEfficientInitialTorsoJems("singleX2", asJsSkt, res, viab, curBest);
+
+	}
+
+}
+
+mhset.checkInitTorsoSingleX1 = function(armorSet, aSkillName, res, viab, curBest) {
+	var bjSc = this.workingSet.bestJewels[aSkillName];
+	var asJs = armorSet.JemSet;
+	var asJsSkt = armorSet.JemSet.skillTotals[aSkillName];
+
+	if (bjSc
+		&& bjSc.singleSlot.SkillPoints > 0) {
+
+		var msg = "                Found Single Slot Jem - " + bjSc.singleSlot.Jewel + " (" + res.singleX1 + ")";
+		this.spitOutToDisplay(msg,"armorRow");
+
+		res.singleX1 = bjSc.singleSlot.SkillPoints  + bjSc.singleSlot.SkillPoints  * asJsSkt.TorsoUps;
+		this.checkMostEfficientInitialTorsoJems("singleX1", asJsSkt, res, viab, curBest);
+	}
+}
+
+/*========================================================================
+     ___      .______   .______    __      ____    ____                                        
+    /   \     |   _  \  |   _  \  |  |     \   \  /   /                                        
+   /  ^  \    |  |_)  | |  |_)  | |  |      \   \/   /                                         
+  /  /_\  \   |   ___/  |   ___/  |  |       \_    _/                                          
+ /  _____  \  |  |      |  |      |  `----.    |  |                                            
+/__/     \__\ | _|      | _|      |_______|    |__|                                            
+                                                                                               
+     _______.___________.    ___      .__   __.  _______       ___      .______       _______  
+    /       |           |   /   \     |  \ |  | |       \     /   \     |   _  \     |       \ 
+   |   (----`---|  |----`  /  ^  \    |   \|  | |  .--.  |   /  ^  \    |  |_)  |    |  .--.  |
+    \   \       |  |      /  /_\  \   |  . `  | |  |  |  |  /  /_\  \   |      /     |  |  |  |
+.----)   |      |  |     /  _____  \  |  |\   | |  '--'  | /  _____  \  |  |\  \----.|  '--'  |
+|_______/       |__|    /__/     \__\ |__| \__| |_______/ /__/     \__\ | _| `._____||_______/ 
+                                                                                               
+  _______  _______ .___  ___.      _______.                                                    
+ /  _____||   ____||   \/   |     /       |                                                    
+|  |  __  |  |__   |  \  /  |    |   (----`                                                    
+|  | |_ | |   __|  |  |\/|  |     \   \                                                        
+|  |__| | |  |____ |  |  |  | .----)   |                                                       
+ \______| |_______||__|  |__| |_______/                                                        
+                                                                                               
+=========================================================================*/
+
+mhset.applyBestJems = function(armorSet) {
+	console.log ("applyBestJems");
+	var asJs = armorSet.JemSet;
+	if (asJs.slot1sRemaining + asJs.slot2sRemaining + asJs.slot3sRemaining > 0) {
+		var msg = "			Filling Slots --- Single:" + asJs.slot1sRemaining + " Double:" + asJs.slot2sRemaining + " Triple:" + asJs.slot3sRemaining;
+		this.spitOutToDisplay(msg,"armorRow");
+
+//		for (var i = 0; i < armorSet.JemSet.skillPriority.length && armorSet.JemSet.TorsoRemaining > 0; i++) {
+//			this.applyInitialTorsoJemsBySkill(armorSet, armorSet.JemSet.skillPriority[i].SkillName);
+//		}
+		this.checkViabilityOfJemSet(armorSet);
+	} else if ( (asJs.slot1sRemaining + asJs.slot2sRemaining + asJs.slot3sRemaining <= 0 ) && asJs.TorsoRemaining > 0 ) {
+		var msg = "			No slots remain, going to fill " + asJs.TorsoRemaining + " torso slots";
+		this.spitOutToDisplay(msg,"armorRow");
+		this.checkViabilityOfJemSet(armorSet);
+	} else {
+		var msg = "			No slots remain";
+		this.spitOutToDisplay(msg,"armorRow");
+		this.checkViabilityOfJemSet(armorSet);
+	}
+
+}
+
+mhset.checkViabilityOfJemSet = function(armorSet) {
+	console.log ("checkViabilityofJemSet");
+	var asJs = armorSet.JemSet;
+	var incompleteSkills = 0;
+	var totalPointsShort = 0;
+	var totalSlotsRemaining = asJs.slot1sRemaining + (asJs.slot2sRemaining * 2) + (asJs.slot3sRemaining * 3) + asJs.TorsoRemaining;
+	for (var i = 0; i < asJs.skillPriority.length; i++) {		
+		if (asJs.skillPriority[i].JewelPointsRequired > asJs.skillPriority[i].JewelPointsApplied) {
+			incompleteSkills++;
+			totalPointsShort += asJs.skillPriority[i].JewelPointsRequired - asJs.skillPriority[i].JewelPointsApplied;
+		}
+	}
+	var maxPossiblePointsToJemIn = (totalSlotsRemaining * 2) + (asJs.TorsoRemaining * 2 * armorSet.TorsoUps);
+
+	var msg = "           A total of " + totalPointsShort + " points are required. Only " + totalSlotsRemaining 
+			+ " slots are left, assuming " + maxPossiblePointsToJemIn + " more points attainable";
+	this.spitOutToDisplay(msg, "armorRow");
+
+	if (incompleteSkills > 0 && maxPossiblePointsToJemIn < totalPointsShort) {
+
+	}
+}
+
+
+/*========================================================================
+     ___      .______   .______    __      ____    ____         
+    /   \     |   _  \  |   _  \  |  |     \   \  /   /         
+   /  ^  \    |  |_)  | |  |_)  | |  |      \   \/   /          
+  /  /_\  \   |   ___/  |   ___/  |  |       \_    _/           
+ /  _____  \  |  |      |  |      |  `----.    |  |             
+/__/     \__\ | _|      | _|      |_______|    |__|             
+                                                                
+.___________.  ______   .______          _______.  ______       
+|           | /  __  \  |   _  \        /       | /  __  \      
+`---|  |----`|  |  |  | |  |_)  |      |   (----`|  |  |  |     
+    |  |     |  |  |  | |      /        \   \    |  |  |  |     
+    |  |     |  `--'  | |  |\  \----.----)   |   |  `--'  |     
+    |__|      \______/  | _| `._____|_______/     \______/      
+                                                                
+  _______  _______ .___  ___.      _______.               ___   
+ /  _____||   ____||   \/   |     /       |              |__ \  
+|  |  __  |  |__   |  \  /  |    |   (----`    ______       ) | 
+|  | |_ | |   __|  |  |\/|  |     \   \       |______|     / /  
+|  |__| | |  |____ |  |  |  | .----)   |                  / /_  
+ \______| |_______||__|  |__| |_______/                  |____| 
+                                                                
+=========================================================================*/
 
 
 
+mhset.applyRemainingTorsoJemsBySkillTriple = function(armorSet, aSkillName) {
 
+}
 
+mhset.applyRemainingTorsoJemsBySkillDouble = function(armorSet, aSkillName) {
+	
+}
 
+mhset.applyRemainingTorsoJemsBySkillSingle = function(armorSet, aSkillName) {
+	
+}
 
 
 
@@ -867,10 +1494,14 @@ mhset.assignSkillPriority = function(armorSet) {
 
 
 function padRight (str,pad) {
-	var newstr = str + pad;
+	var newstr = str + "" + pad;
 	return newstr.substring(0, pad.length);
 }
 
+function padLeft (str,pad) {
+	var newstr = pad + "" + str;
+	return newstr.substring(newstr.length - pad.length, pad.length);
+}
 
 
 mhset.spitOutTable = function(obj) {
@@ -899,7 +1530,25 @@ mhset.spitOutTable = function(obj) {
 	}
 }
 
+mhset.spitOutToDisplay = function(msg, divClass) {
+	var div = document.createElement("div");
 
+	if (divClass) {
+		div.setAttribute("class",divClass);
+	}
+	div.innerHTML = msg;
+	this.rawoutput.appendChild(div);
+}
+
+
+removeDescendents = function(node) {
+	if (node && node.hasChildNodes() ) {
+		while ( node.hasChildNodes() ) {
+			removeDescendents(node.firstChild);
+			node.removeChild(node.firstChild);
+		}
+	}
+}
 
 
 
@@ -932,12 +1581,36 @@ mhset.returnCurIndices = function() {
 
 
 mhset.test = function() {
-	mhset.ExclusionLists.Body["Gore Mail"] = 1;
-	mhset.ExclusionLists.Jewel["Artisan Jewel 3"] = 1;
+//	mhset.ExclusionLists.Body["Gore Mail"] = 1;
+	mhset.ExclusionLists.Body["Any 1 Slot"] = 1;
+	mhset.ExclusionLists.Head["Any 1 Slot"] = 1;
+	mhset.ExclusionLists.Arms["Any 1 Slot"] = 1;
+	mhset.ExclusionLists.Waist["Any 1 Slot"] = 1;
+	mhset.ExclusionLists.Legs["Any 1 Slot"] = 1;
+	mhset.ExclusionLists.Body["Any 2 Slot"] = 1;
+	mhset.ExclusionLists.Head["Any 2 Slot"] = 1;
+	mhset.ExclusionLists.Arms["Any 2 Slot"] = 1;
+	mhset.ExclusionLists.Waist["Any 2 Slot"] = 1;
+	mhset.ExclusionLists.Legs["Any 2 Slot"] = 1;
+	mhset.ExclusionLists.Body["Any 3 Slot"] = 1;
+	mhset.ExclusionLists.Head["Any 3 Slot"] = 1;
+	mhset.ExclusionLists.Arms["Any 3 Slot"] = 1;
+	mhset.ExclusionLists.Waist["Any 3 Slot"] = 1;
+	mhset.ExclusionLists.Legs["Any 3 Slot"] = 1;
 
-	mhset.setWorkingValidSkill("Challenger +2");
-	mhset.setWorkingValidSkill("Evasion +1");
-	mhset.setWorkingValidSkill("Sharpness +1");
+
+
+	this.rarityLimits.Head = {min: 4, max: 7};
+	this.rarityLimits.Body = {min: 4, max: 7};
+	this.rarityLimits.Arms = {min: 4, max: 7};
+	this.rarityLimits.Waist = {min: 4, max: 7};
+	this.rarityLimits.Legs = {min: 4, max: 7};
+
+
+
+	mhset.setWorkingValidSkill("Challenger +2",1);
+	mhset.setWorkingValidSkill("Evasion +1",2);
+	mhset.setWorkingValidSkill("Sharpness +1",3);
 //	mhset.setWorkingValidSkill("Attack Up (M)");
 //	mhset.setWorkingValidSkill("Bio Master");
 //	mhset.setWorkingValidSkill("Mind's Eye");
@@ -950,3 +1623,6 @@ mhset.test = function() {
 
 
 }
+
+
+

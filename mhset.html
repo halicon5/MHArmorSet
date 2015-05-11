@@ -18,6 +18,23 @@
 
 	<h1>Test</h1>
 	<div><b>Armor Combinations Examined: <input id="scanCount" /></div>
+
+	<div>
+		<select id="skillChoice1"><select>
+		<select id="skillChoice2"><select>
+		<select id="skillChoice3"><select>
+		<select id="skillChoice4"><select>
+		<select id="skillChoice5"><select>
+		<select id="skillChoice6"><select>
+	</div>
+	<div>
+		<input type="button" value="Find Piece Candidates" onclick="mhset.getInitialArmorCandidates();" />
+	</div>
+
+	<hr />
+	<input type="button" value="Find matches" onclick="mhset.test();" />
+
+	<input type="button" value="Stop" onclick="mhset.cancelGrinder = 1;" />
 	<div id="rawoutput"></div>
 
 
