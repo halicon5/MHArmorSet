@@ -10,32 +10,77 @@
 
     <title>Armor Hunter</title>
     <style>
-		div.armorRow {font-family: monospace; white-space: pre;};
+		h2 {margin: 0;}
+		div.candidateBox {height:200px; width:250px; overflow-y:auto; font-size:.8em;}
+		div.armorRow {font-family: monospace; white-space: pre;}
+
     </style>
   </head>
 
 <body>
 
-	<h1>Test</h1>
-	<div><b>Armor Combinations Examined: <input id="scanCount" /></div>
-
-	<div>
-		<select id="skillChoice1"><select>
-		<select id="skillChoice2"><select>
-		<select id="skillChoice3"><select>
-		<select id="skillChoice4"><select>
-		<select id="skillChoice5"><select>
-		<select id="skillChoice6"><select>
-	</div>
-	<div>
-		<input type="button" value="Find Piece Candidates" onclick="mhset.getInitialArmorCandidates();" />
-	</div>
-
-	<hr />
-	<input type="button" value="Find matches" onclick="mhset.test();" />
-
-	<input type="button" value="Stop" onclick="mhset.cancelGrinder = 1;" />
-	<div id="rawoutput"></div>
+	<table>
+		<tr valign="top">
+			<td>
+				<select onchange="mhset.changeHunterType(this);" >
+					<option>Blademaster</option>
+					<option>Gunner</option>
+				<select>
+				<h2>Select Skills</h2>
+				<div>
+					Skill 1: <select id="skillChoice1"><select><br />
+					Skill 2: <select id="skillChoice2"><select><br />
+					Skill 3: <select id="skillChoice3"><select><br />
+					Skill 4: <select id="skillChoice4"><select><br />
+					Skill 5: <select id="skillChoice5"><select><br />
+					Skill 6: <select id="skillChoice6"><select><br />
+					<input type="button" value="Find Piece Candidates" onclick="mhset.getInitialArmorCandidates();" />
+				<hr />
+			</td>
+			<td>
+				<h2>Head Piece Candidates</h2>
+				<div id="headCandidates" class="candidateBox">
+				</div>
+			</td>
+			<td>
+				<h2>Body Piece Candidates</h2>
+				<div id="bodyCandidates" class="candidateBox">
+				</div>
+			</td>
+		</tr>
+		<tr valign="top">
+			<td>
+			</td>
+			<td>
+				<h2>Arm Piece Candidates</h2>
+				<div id="armsCandidates" class="candidateBox">
+				</div>
+			</td>
+			<td>
+				<h2>Waist Piece Candidates</h2>
+				<div id="waistCandidates" class="candidateBox">
+				</div>
+			</td>
+		</tr>
+		<tr valign="top">
+			<td>
+			</td>
+			<td>
+				<h2>Leg Piece Candidates</h2>
+				<div id="legsCandidates" class="candidateBox">
+				</div>
+			</td>
+			<td>
+				<h2>Decoration Candidates</h2>
+				<div id="jewelCandidates" class="candidateBox">
+				</div>
+			</td>
+		</tr>
+	</table>
+		<input type="button" value="Find matches" onclick="mhset.test();" />
+		<input type="button" value="Stop" onclick="mhset.cancelGrinder = 1;" />
+		<div><b>Armor Combinations Examined: <input id="scanCount" /></div>
+		<div id="rawoutput"></div>
 
 
 	<script type="text/javascript">

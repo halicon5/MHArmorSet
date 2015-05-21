@@ -20,15 +20,37 @@ mhset.initialize = function() {
 	this.failures = [];
 //	this.failures[0] = "initialize";
 
+	this.candidateBox = {};
+	this.candidateBox.Head = document.getElementById("headCandidates");
+	this.candidateBox.Body = document.getElementById("bodyCandidates");
+	this.candidateBox.Arms = document.getElementById("armsCandidates");
+	this.candidateBox.Waist = document.getElementById("waistCandidates");
+	this.candidateBox.Legs = document.getElementById("legsCandidates");
+	this.candidateBox.Jewel = document.getElementById("jewelCandidates");
+
 	this.UIObjects = {};
+	this.UIObjects.candidateLists = {};
+	this.UIObjects.candidateLists.oHead = {};
+	this.UIObjects.candidateLists.Head = [];
+	this.UIObjects.candidateLists.oBody = {};
+	this.UIObjects.candidateLists.Body = [];
+	this.UIObjects.candidateLists.oArms = {};
+	this.UIObjects.candidateLists.Arms = [];
+	this.UIObjects.candidateLists.oWaist = {};
+	this.UIObjects.candidateLists.Waist = [];
+	this.UIObjects.candidateLists.oLegs = {};
+	this.UIObjects.candidateLists.Legs = [];
+	this.UIObjects.candidateLists.oJewel = {};
+	this.UIObjects.candidateLists.Jewel = [];
+
 	this.createSkillArmorIndexes();
 	this.clearWorkingData();
 	this.initializeRarityLimits();
 	this.UserHunterType = "Blademaster";
 	this.UserGender = "Male";
-	this.WeaponSlots = 0;
+	this.WeaponSlots = 2;
 	this.Talisman = {};
-	this.Talisman.Slots = 0;
+	this.Talisman.Slots = 1;
 	this.Talisman.Skill1 = "Evasion";
 	this.Talisman.Skill2 = "Handicraft";
 	this.Talisman.Skill1Points = 0;
@@ -58,6 +80,13 @@ mhset.initialize = function() {
 //	alert('test');
 	console.log("COMPLETE: mhset.initialize();");	
 }
+
+mhset.changeHunterType = function(sel) {
+	alert(sel.selectedIndex);
+	var selInd = sel.selectedIndex;
+	this.UserHunterType = sel.options[selInd].value;
+}
+
 
 mhset.createSkillArmorIndexes = function() {
 	console.log("CALL: mhset.createSkillArmorIndex();");
@@ -132,15 +161,24 @@ mhset.createSkillListArray = function(){
 	}
 	this.SkillListArray.sort( function(a,b) {
 		var skA, skB;
-		skA = a.SkillName.toLowerCase() + '_' + a.ActivatedSkill.toLowerCase();
-		skB = b.SkillName.toLowerCase() + '_' + b.ActivatedSkill.toLowerCase();
+		skA = a.SkillName.toLowerCase();
+		skB = b.SkillName.toLowerCase();
 		if ( skA < skB ) {
 			return -1;
 		}
 		if (skA > skB ) {
 			return 1;
 		}
+		if (skA == skB) {
+			if (a.PointsReq < b.PointsReq) {
+				return -1;
+			}
+			if (a.PointsReq > b.PointsReq) {
+				return 1;
+			}
+		}
 		return 0;
+
 	});
 }
 
@@ -148,12 +186,12 @@ mhset.createSkillListArray = function(){
 mhset.initializeRarityLimits = function() {
 	console.log("CALL: mhset.initializeRarityLimits();");
 	this.rarityLimits = {};
-	this.rarityLimits.Head = {min: 7, max: 8};
-	this.rarityLimits.Body = {min: 7, max: 8};
-	this.rarityLimits.Arms = {min: 7, max: 8};
-	this.rarityLimits.Waist = {min: 7, max: 8};
-	this.rarityLimits.Legs = {min: 7, max: 8};
-	this.rarityLimits.Jewel = {min: 1, max: 10};
+	this.rarityLimits.Head = {min: 0, max: 10};
+	this.rarityLimits.Body = {min: 0, max: 10};
+	this.rarityLimits.Arms = {min: 0, max: 10};
+	this.rarityLimits.Waist = {min: 0, max: 10};
+	this.rarityLimits.Legs = {min: 0, max: 10};
+	this.rarityLimits.Jewel = {min: 0, max: 10};
 	console.log("COMPLETE: mhset.initializeRarityLimits();");
 }
 
@@ -174,12 +212,180 @@ mhset.createSkillChoiceDropdowns = function() {
 		scdSc["skill" + di].appendChild(nullOpt);
 
 		for (var i = 0; i < this.SkillListArray.length; i++) {
-			var opt = document.createElement("option");
-			opt.value = this.SkillListArray[i].ActivatedSkill;
-			opt.innerHTML = this.SkillListArray[i].ActivatedSkill;
-			scdSc["skill" + di].appendChild(opt);
+			if (this.SkillListArray[i].PointReq > 0) {
+				var opt = document.createElement("option");
+				opt.value = this.SkillListArray[i].ActivatedSkill;
+				opt.innerHTML = this.SkillListArray[i].SkillName + ": " + this.SkillListArray[i].ActivatedSkill;
+				scdSc["skill" + di].appendChild(opt);
+			}
 		}
 	}
+}
+
+mhset.getInitialArmorCandidates = function() {
+	this.clearTargetUnlockSkills();
+	this.setTargetUnlockSkills();
+	this.createCandidateLists();
+}
+
+mhset.clearTargetUnlockSkills = function() {
+	for (var sk in this.workingSet.targetUnlockSkills) {
+		delete this.workingSet.targetUnlockSkills[sk];
+	}
+}
+
+mhset.setTargetUnlockSkills = function() {
+	var sc = this.UIObjects.skillChoiceDrops;
+	for (var ui in sc) {
+		var selInd = sc[ui].selectedIndex;
+		if (sc[ui].options[selInd].value != "") {
+			mhset.setWorkingValidSkill(sc[ui].options[sc[ui].selectedIndex].value ,ui);
+		}
+	}
+}
+
+mhset.clearExclusionLists = function () {
+	for (var p in this.ExclusionLists) {
+		for (var a in this.ExclusionLists[p]) {
+			this.ExclusionLists[p][a] = 0;
+		}
+	}
+}
+
+mhset.clearCandidateLists = function () {
+	for (var p in this.candidateBox) {
+		removeDescendents(this.candidateBox[p]);
+	}
+	var parts = ["Head","Body","Arms","Waist","Legs"];
+	for (var i = 0; i < parts.length; i++ ) {
+		delete this.UIObjects.candidateLists[parts[i]];
+		this.UIObjects.candidateLists[parts[i]] = [];
+
+		for (var ap in this.UIObjects.candidateLists['o' + parts[i]]) {
+			delete this.UIObjects.candidateLists['o' + parts[i]][ap];
+		}
+	}
+}
+
+
+mhset.createCandidateLists = function() {
+	this.clearExclusionLists();
+	this.clearCandidateLists();
+	this.buildCandidateList("Head");
+	this.buildCandidateList("Body");
+	this.buildCandidateList("Arms");
+	this.buildCandidateList("Waist");
+	this.buildCandidateList("Legs");
+	this.buildCandidateList("Jewel");
+}
+
+mhset.buildCandidateList = function(aBodyPart) {
+	console.log(aBodyPart);
+	var candBox = this.candidateBox[aBodyPart];
+	var candUIlist = this.UIObjects.candidateLists['o' + aBodyPart];
+	var candUIarr = this.UIObjects.candidateLists[aBodyPart];
+
+	this.buildGenericArmorCandidates(candUIlist,aBodyPart);
+	for (var targSkill in this.workingSet.targetUnlockSkills) {
+		var aSkillName = this.workingSet.targetUnlockSkills[targSkill].SkillName;
+		for (var ap in this.SkillArmorIndex[aSkillName]) {
+			var saiSc = this.SkillArmorIndex[aSkillName][ap];
+			if (	
+				saiSc.Part == aBodyPart 
+				&& !candUIlist[ap]	// this prevents duplicate UI component builds
+				&& saiSc.SkillPoints > 0
+				&& saiSc.Rarity >= this.rarityLimits[aBodyPart].min && saiSc.Rarity <= this.rarityLimits[aBodyPart].max 
+				&& (saiSc.HunterType == "Both" || saiSc.HunterType == this.UserHunterType)
+			) {
+				var UIcomps = this.buildCandidateUIcomponents(ap,aBodyPart,saiSc.Rarity);
+				if (UIcomps) {
+					candUIlist[ap] = UIcomps;
+				}
+			}
+		}
+	}
+
+	for (var ap in candUIlist) {
+		candUIarr.push(candUIlist[ap]);
+	}
+	
+	// sort it
+	candUIarr.sort(function(a,b) {
+		if (a.Rarity > b.Rarity) {
+			return 1;
+		}
+		if (a.Rarity < b.Rarity) {
+			return -1;
+		}
+		if (a.Rarity === b.Rarity) {
+			if (a.ArmorPiece > b.ArmorPiece) {
+				return 1;
+			}
+			if (a.ArmorPiece < b.ArmorPiece) {
+				return -1;
+			}
+		}
+		return 0;
+	});
+
+	for (var i = 0; i < candUIarr.length; i++) {
+		this.candidateBox[aBodyPart].appendChild(candUIarr[i].divRow);
+	}
+}
+
+
+mhset.buildGenericArmorCandidates = function(candUIlist, aBodyPart) {
+
+	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
+		var tup = "_" + this.UserHunterType + "TorsoUp" + aBodyPart;
+		candUIlist[tup] = this.buildCandidateUIcomponents(tup,aBodyPart,0);
+	}
+
+	if (aBodyPart !== 'Jewel') {
+		var s1, s2, s3;
+		s1 = "_" +  this.UserHunterType  + "1Slot" + aBodyPart;
+		s2 = "_" +  this.UserHunterType  + "2Slot" + aBodyPart;
+		s3 = "_" +  this.UserHunterType  + "3Slot" + aBodyPart;
+		candUIlist[s1] = this.buildCandidateUIcomponents( s1,aBodyPart,0);
+		candUIlist[s2] = this.buildCandidateUIcomponents( s2,aBodyPart,0);
+		candUIlist[s3] = this.buildCandidateUIcomponents( s3,aBodyPart,0);
+	}
+}
+
+mhset.buildCandidateUIcomponents = function(aArmorPiece, aBodyPart, rarity) {
+	var divRow = document.createElement("div");
+	var divLab = document.createTextNode(" - " + aArmorPiece + ' [' + rarity + ']');
+	var chkbx = document.createElement("input");
+	chkbx.setAttribute("type","checkbox");
+	chkbx.mhsetRef = this;
+	chkbx.paramArmorPiece = aArmorPiece;
+	chkbx.paramBodyPart = aBodyPart;
+	chkbx.checked = true;
+	chkbx.onclick = function() {this.mhsetRef.setExclusionListItem(this.paramArmorPiece, this.paramBodyPart, this.checked);}
+
+	var dtlDiv = document.createElement("div");
+	dtlDiv.innerHTML = this.getArmorPieceSummary(aArmorPiece);
+
+	divRow.appendChild(chkbx);
+	divRow.appendChild(divLab);
+	var retObj = {};
+	retObj.ArmorPiece = aArmorPiece;
+	retObj.chkbx = chkbx;
+	retObj.divRow = divRow;
+	retObj.Rarity = rarity;
+	return retObj;
+}
+
+mhset.setExclusionListItem = function(armorPiece, bodyPart, inc) {
+	console.log(armorPiece + ' ' + bodyPart + ' ' + inc);
+	if (this.ExclusionLists[bodyPart]) {
+		this.ExclusionLists[bodyPart][armorPiece] = (inc) ? 0 : 1;
+	}	
+}
+
+
+mhset.getArmorPieceSummary = function(aArmorPiece) {
+
 }
 
 /*
@@ -277,6 +483,7 @@ mhset.setArmorCandidates = function(aHunterType, aBodyPart) {
 		var skillName = targSkSc[sk].SkillName;
 		this.findArmorCandidates(candSc, candAr, skillName, aHunterType, aBodyPart);
 	}
+	this.removeCandidateConflicts(candSc);
 
 	console.log("COMPLETE: mhset.setArmorCandidates(" + aHunterType + ", " + aBodyPart + ");");
 }
@@ -286,43 +493,33 @@ mhset.findGenericArmorCandidate = function(candidateRepos, candidateArray, aHunt
 	/*
 	Any piece with Torso up is alawys candidate and will be included
 	*/	
-	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body") { 
-		var tup = "_" + aHunterType + "TorsoUp" + aBodyPart;
+	var tup = "_" + aHunterType + "TorsoUp" + aBodyPart;
+	if (aBodyPart !== 'Jewel' && aBodyPart !== "Body" && !this.ExclusionLists[aBodyPart][tup]) { 
 		candidateRepos[tup] = {};
 	}
 
 	// Allow for any 1,2, or 3 Slot piece to beconsidered as well
 	if (aBodyPart !== 'Jewel') {
 //		candidateRepos["_" + aHunterType + "0Slot" + aBodyPart] = {};
-		if (!this.ExclusionLists[aBodyPart]["Any 1 Slot"]) {
-			candidateRepos["_" + aHunterType + "1Slot" + aBodyPart] = {};
+		s1 = "_" +  aHunterType  + "1Slot" + aBodyPart;
+		s2 = "_" +  aHunterType  + "2Slot" + aBodyPart;
+		s3 = "_" +  aHunterType  + "3Slot" + aBodyPart;
+		if (!this.ExclusionLists[aBodyPart][s1]) {
+			candidateRepos[s1] = {};
 		}
 
-		if (!this.ExclusionLists[aBodyPart]["Any 2 Slot"]) {
-			candidateRepos["_" + aHunterType + "2Slot" + aBodyPart] = {};
+		if (!this.ExclusionLists[aBodyPart][s2]) {
+			candidateRepos[s2] = {};
 		}
 
-		if (!this.ExclusionLists[aBodyPart]["Any 3 Slot"]) {
-			candidateRepos["_" + aHunterType + "3Slot" + aBodyPart] = {};
+		if (!this.ExclusionLists[aBodyPart][s3]) {
+			candidateRepos[s3] = {};
 		}
 	}
 	console.log("COMPLETE: mhset.findGenericArmorCandidate(" + aHunterType + ", " + aBodyPart + ");");
 }
 
 mhset.findArmorCandidates = function(candidateRepos, candidateArray, aSkillName, aHunterType, aBodyPart) {
-
-	/* // Removed 5/2/2015
-	for (var ap in this.SkillArmorIndex["Torso Up"]) {
-		var saiSc = this.SkillArmorIndex["Torso Up"][ap];
-		if (	
-				saiSc.Part == aBodyPart 
-				&& saiSc.Rarity >= this.rarityLimits[aBodyPart].min && saiSc.Rarity <= this.rarityLimits[aBodyPart].max 
-				&& (saiSc.HunterType == "Both" || saiSc.HunterType == aHunterType)
-			) {
-			candidateRepos[ap] = {};
-		}
-	}
-	*/
 
 	for (var ap in this.SkillArmorIndex[aSkillName]) {
 		var saiSc = this.SkillArmorIndex[aSkillName][ap];
@@ -334,6 +531,25 @@ mhset.findArmorCandidates = function(candidateRepos, candidateArray, aSkillName,
 				&& (saiSc.HunterType == "Both" || saiSc.HunterType == aHunterType)
 			) {
 			candidateRepos[ap] = {};
+		}
+	}
+
+}
+
+mhset.removeCandidateConflicts = function(candidateRepos) {
+	var targSkSc =	this.workingSet.targetUnlockSkills;
+	for (var c in candidateRepos) {
+		var negTally = 0;
+		for (var sk in targSkSc) {
+			if (this.ArmorSkillIndex[c] && this.ArmorSkillIndex[c][sk]) {
+				var armSkill = this.ArmorSkillIndex[c][sk];
+				if (armSkill.SkillPoints < 0) {
+					negTally += armSkill.SkillPoints;
+				}
+			}
+		}
+		if (negTally < 0) {
+			delete candidateRepos[c];
 		}
 	}
 }
@@ -583,7 +799,7 @@ mhset.createExperimentalSets = function() {
 		if (this.cancelGrinder == true) {
 			var msg = "Matchmaking Cancelled By User.";
 			this.spitOutToDisplay(msg);
-			this.cancelGrinder == false;
+			this.cancelGrinder = false;
 			this.workingSet.flags.initialViabilityDone = 1;
 		} else if ( this.workingSet.chunkCount < maxChunks &&
 	        	curHead < cand.HeadArray.length ) {
@@ -909,8 +1125,8 @@ mhset.examineArmorSetCominbation = function(armorSet, asIndex) {
 			+ padRight(armorSet.Waist, pad) + " " 
 			+ padRight(armorSet.Legs, pad);
 		this.rawoutput.appendChild(div1);
-		this.assignSkillPriority(armorSet);
-		this.createJemSets(armorSet);
+		this.assignSkillPriority(armorSet,asIndex);
+		this.createJemSets(armorSet,asIndex);
 	}
 }
 
@@ -933,7 +1149,7 @@ mhset.assignSkillPriority = function(armorSet) {
 	this.rawoutput.appendChild(div1);
 }
 
-mhset.createJemSets = function(armorSet) {
+mhset.createJemSets = function(armorSet,asIndex) {
 	/*
 	Prioritize the highest priority skill need until it is perfectly filled
 		- Fill torso first if possible and it doesn't exceed the points required on any given skill.
@@ -971,7 +1187,7 @@ mhset.createJemSets = function(armorSet) {
 	this.sortInitialJemSetSkillPriority(armorSet.JemSet); // always make the skill requiring the most points priority
 	this.applyBestInitialTorsoJems(armorSet);
 	this.sortJemSetSkillPriority(armorSet.JemSet); // always make the skill requiring the most points priority and the gems that require the most slots is a priority
-	this.applyBestJems(armorSet);
+	this.applyBestJems(armorSet,asIndex);
 }
 
 mhset.sortJemSetSkillPriority = function(JemSet) {
@@ -1402,8 +1618,8 @@ mhset.checkInitTorsoSingleX1 = function(armorSet, aSkillName, res, viab, curBest
                                                                                                
 =========================================================================*/
 
-mhset.applyBestJems = function(armorSet) {
-	console.log ("applyBestJems");
+mhset.applyBestJems = function(armorSet,asIndex) {
+	console.log ("applyBestJems" + asIndex);
 	var asJs = armorSet.JemSet;
 	if (asJs.slot1sRemaining + asJs.slot2sRemaining + asJs.slot3sRemaining > 0) {
 		var msg = "			Filling Slots --- Single:" + asJs.slot1sRemaining + " Double:" + asJs.slot2sRemaining + " Triple:" + asJs.slot3sRemaining;
@@ -1581,45 +1797,9 @@ mhset.returnCurIndices = function() {
 
 
 mhset.test = function() {
-//	mhset.ExclusionLists.Body["Gore Mail"] = 1;
-	mhset.ExclusionLists.Body["Any 1 Slot"] = 1;
-	mhset.ExclusionLists.Head["Any 1 Slot"] = 1;
-	mhset.ExclusionLists.Arms["Any 1 Slot"] = 1;
-	mhset.ExclusionLists.Waist["Any 1 Slot"] = 1;
-	mhset.ExclusionLists.Legs["Any 1 Slot"] = 1;
-	mhset.ExclusionLists.Body["Any 2 Slot"] = 1;
-	mhset.ExclusionLists.Head["Any 2 Slot"] = 1;
-	mhset.ExclusionLists.Arms["Any 2 Slot"] = 1;
-	mhset.ExclusionLists.Waist["Any 2 Slot"] = 1;
-	mhset.ExclusionLists.Legs["Any 2 Slot"] = 1;
-	mhset.ExclusionLists.Body["Any 3 Slot"] = 1;
-	mhset.ExclusionLists.Head["Any 3 Slot"] = 1;
-	mhset.ExclusionLists.Arms["Any 3 Slot"] = 1;
-	mhset.ExclusionLists.Waist["Any 3 Slot"] = 1;
-	mhset.ExclusionLists.Legs["Any 3 Slot"] = 1;
-
-
-
-	this.rarityLimits.Head = {min: 4, max: 7};
-	this.rarityLimits.Body = {min: 4, max: 7};
-	this.rarityLimits.Arms = {min: 4, max: 7};
-	this.rarityLimits.Waist = {min: 4, max: 7};
-	this.rarityLimits.Legs = {min: 4, max: 7};
-
-
-
-	mhset.setWorkingValidSkill("Challenger +2",1);
-	mhset.setWorkingValidSkill("Evasion +1",2);
-	mhset.setWorkingValidSkill("Sharpness +1",3);
-//	mhset.setWorkingValidSkill("Attack Up (M)");
-//	mhset.setWorkingValidSkill("Bio Master");
-//	mhset.setWorkingValidSkill("Mind's Eye");
-
 	mhset.getArmorPiecesByTargetSkills("Blademaster");
 
 	mhset.createExperimentalSets(0,0,0,0,0);
-//	mhset.createExperimentalSets();
-	//mhset.setArmorCandidates("Blademaster","Head");
 
 
 }
